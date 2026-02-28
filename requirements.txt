@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+# tinkoff-invest
+pandas
+plotly
+pydantic

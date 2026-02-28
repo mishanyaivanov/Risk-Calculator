@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Calculator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Risk Calculator (MOEX/SPFI)</h1>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="modeTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tinkoff-tab" data-bs-toggle="tab" data-bs-target="#tinkoff" type="button" role="tab">Tinkoff API</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" type="button" role="tab">Manual Input</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="random-tab" data-bs-toggle="tab" data-bs-target="#random" type="button" role="tab">Random Data</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="modeContent">
+                    <!-- Tinkoff Mode -->
+                    <div class="tab-pane fade show active" id="tinkoff" role="tabpanel">
+                        <form id="searchForm" class="row g-3">
+                            <div class="col-auto">
+                                <input type="text" class="form-control" id="instrumentName" placeholder="Ticker or Name">
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-primary mb-3">Search</button>
+                            </div>
+                        </form>
+                        <div id="searchResults" class="list-group mt-3"></div>
+                        <div id="selectedInstrument" class="mt-3 text-success fw-bold"></div>
+                        <input type="hidden" id="figi">
+
+                        <div class="row mt-3">
+                            <div class="col">
+                                <label for="startDate" class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="startDate">
+                            </div>
+                            <div class="col">
+                                <label for="endDate" class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="endDate">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Mode -->
+                    <div class="tab-pane fade" id="manual" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="manualPrices" class="form-label">Enter prices (space or comma separated)</label>
+                            <textarea class="form-control" id="manualPrices" rows="3" placeholder="100.5 101.2 99.8 102.0 ..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Random Mode -->
+                    <div class="tab-pane fade" id="random" role="tabpanel">
+                        <p>Generates 100 days of random price data (Geometric Brownian Motion).</p>
+                        <button type="button" class="btn btn-secondary" id="generateRandomBtn">Generate & Calculate</button>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <label for="confidence" class="form-label">Confidence Level</label>
+                    <select class="form-select" id="confidence">
+                        <option value="0.95">95%</option>
+                        <option value="0.99">99%</option>
+                    </select>
+                </div>
+
+                <button type="button" class="btn btn-success w-100" id="calculateBtn">Calculate Risk</button>
+            </div>
+        </div>
+
+        <div id="results" class="mt-4"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentMode = 'tinkoff';
+
+        document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', event => {
+                currentMode = event.target.id.replace('-tab', '');
+                console.log("Mode switched to:", currentMode);
+            });
+        });
+
+        // Search Logic
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('instrumentName').value;
+            const res = await fetch(`/api/search?query=${name}`);
+            const data = await res.json();
+
+            const list = document.getElementById('searchResults');
+            list.innerHTML = '';
+
+            if (data.length === 0) {
+                list.innerHTML = '<div class="alert alert-warning">No instruments found.</div>';
+                return;
+            }
+
+            data.forEach(item => {
+                const a = document.createElement('a');
+                a.className = 'list-group-item list-group-item-action';
+                a.innerText = `${item.name} (${item.ticker}) - ${item.type}`;
+                a.href = '#';
+                a.onclick = () => {
+                    document.getElementById('selectedInstrument').innerText = `Selected: ${item.name} (${item.ticker})`;
+                    document.getElementById('figi').value = item.figi;
+                    list.innerHTML = '';
+                };
+                list.appendChild(a);
+            });
+        });
+
+        // Calculate Logic
+        document.getElementById('calculateBtn').addEventListener('click', async () => {
+            const confidence = document.getElementById('confidence').value;
+            let payload = {
+                mode: currentMode,
+                confidence: parseFloat(confidence)
+            };
+
+            if (currentMode === 'tinkoff') {
+                payload.figi = document.getElementById('figi').value;
+                payload.start_date = document.getElementById('startDate').value;
+                payload.end_date = document.getElementById('endDate').value;
+
+                if (!payload.figi) {
+                    alert("Please select an instrument first.");
+                    return;
+                }
+            } else if (currentMode === 'manual') {
+                payload.manual_prices = document.getElementById('manualPrices').value;
+            } else if (currentMode === 'random') {
+                // No extra params needed
+            }
+
+            const res = await fetch('/api/calculate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            const result = await res.json();
+            const resultsDiv = document.getElementById('results');
+
+            if (result.error) {
+                resultsDiv.innerHTML = `<div class="alert alert-danger">${result.error}</div>`;
+            } else {
+                // Format prices for display (first 10 and last 5)
+                let pricesDisplay = "";
+                if (result.prices && result.prices.length > 0) {
+                    const prices = result.prices.map(p => p.toFixed(2));
+                    if (prices.length > 20) {
+                        pricesDisplay = prices.slice(0, 10).join(", ") + " ... " + prices.slice(-5).join(", ");
+                    } else {
+                        pricesDisplay = prices.join(", ");
+                    }
+                }
+
+                resultsDiv.innerHTML = `
+                    <div class="card">
+                        <div class="card-header bg-info text-white">Results</div>
+                        <div class="card-body">
+                            <p><strong>Data Points:</strong> ${result.prices_count}</p>
+                            <p><strong>Last Price:</strong> ${result.last_price.toFixed(2)}</p>
+
+                            <div class="alert alert-secondary">
+                                <strong>Prices Used:</strong><br>
+                                <small>${pricesDisplay}</small>
+                            </div>
+
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="alert alert-primary">
+                                        <h5>Historical VaR</h5>
+                                        <h3>${result.historical_var.var_loss.toFixed(2)}</h3>
+                                        <small>Confidence: ${result.historical_var.confidence * 100}%</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="alert alert-warning">
+                                        <h5>Expected Shortfall</h5>
+                                        <h3>${result.es.es_loss.toFixed(2)}</h3>
+                                        <small>Tail Count: ${result.es.tail_count}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="alert alert-success">
+                                        <h5>Parametric VaR</h5>
+                                        <h3>${result.parametric_var.var_loss.toFixed(2)}</h3>
+                                        <small>Sigma: ${result.parametric_var.sigma.toFixed(4)}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // Quick generate button inside Random tab
+        document.getElementById('generateRandomBtn').addEventListener('click', () => {
+             document.getElementById('calculateBtn').click();
+        });
+
+    </script>
+</body>
+</html>
