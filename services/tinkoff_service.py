@@ -1,20 +1,23 @@
 from datetime import datetime, timedelta
 from typing import List, Dict, Union
 import os
+import sys
 
-# Пытаемся импортировать библиотеку Tinkoff. Если её нет, создаем заглушки.
 try:
-    from tinkoff.invest import Client, CandleInterval
-    from tinkoff.invest.services import InstrumentsService
+    from t_tech.invest import Client, CandleInterval
+    from t_tech.invest.services import InstrumentsService
     TINKOFF_AVAILABLE = True
 except ImportError:
-    TINKOFF_AVAILABLE = False
-    Client = None
-    CandleInterval = None
-    InstrumentsService = None
-    print("Warning: 'tinkoff-invest' library not found. Tinkoff API features will be disabled.")
+    try:
+        from tinkoff.invest import Client, CandleInterval
+        from tinkoff.invest.services import InstrumentsService
+        TINKOFF_AVAILABLE = True
+    except ImportError:
+        TINKOFF_AVAILABLE = False
+        Client = None
+        CandleInterval = None
+        InstrumentsService = None
 
-# Получаем токен из переменных окружения или используем заглушку
 TOKEN = os.getenv("TINKOFF_TOKEN", "Token")
 
 def similarity_score(str1: str, str2: str, threshold: float) -> bool:
@@ -43,17 +46,14 @@ def find_instruments(name: str, token: str = TOKEN) -> List[Dict]:
 
     results = []
     if token == "Token":
-        print("Warning: Using placeholder token. Please set TINKOFF_TOKEN environment variable.")
         return []
 
     try:
         with Client(token) as cl:
             instruments: InstrumentsService = cl.instruments
-            # Проходим по всем типам инструментов
             for method_name in ['shares', 'bonds', 'etfs', 'currencies']:
                 method = getattr(instruments, method_name)
                 for item in method().instruments:
-                    # Вычисляем порог похожести
                     thresh_name = min(len(name), len(item.name)) / 1.75
                     thresh_ticker = min(len(name), len(item.ticker)) / 1.75
                     

@@ -3,221 +3,556 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Risk Calculator</title>
+    <title>Coursework: Sergienko - Ivanov</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.26.0/plotly.min.js"></script>
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container { max-width: 1400px; }
+        .card { border: none; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); margin-bottom: 1.5rem; }
+        .card-header { background-color: #fff; border-bottom: 1px solid #edf2f9; font-weight: 600; padding: 1rem 1.25rem; }
+        .metric-value { font-size: 1.75rem; font-weight: 700; color: #2c3e50; }
+        .metric-label { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; }
+        .chart-container { width: 100%; height: 400px; }
+
+        .nav-pills .nav-link.active { background-color: #34495e; }
+        .nav-pills .nav-link { color: #34495e; font-weight: 500; }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8); z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            backdrop-filter: blur(2px);
+        }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h1 class="mb-4">Risk Calculator (MOEX/SPFI)</h1>
+    <!-- Loading Spinner -->
+    <div id="loading" class="loading-overlay d-none">
+        <div class="spinner-border text-secondary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
 
-        <div class="card mb-4">
-            <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs" id="modeTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="tinkoff-tab" data-bs-toggle="tab" data-bs-target="#tinkoff" type="button" role="tab">Tinkoff API</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" type="button" role="tab">Manual Input</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="random-tab" data-bs-toggle="tab" data-bs-target="#random" type="button" role="tab">Random Data</button>
-                    </li>
-                </ul>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">Risk Calculator</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Main Navigation -->
+        <ul class="nav nav-pills mb-4 bg-white p-3 rounded shadow-sm" id="mainTabs" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="single-tab" data-bs-toggle="pill" data-bs-target="#single" type="button" role="tab">1 Asset</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="portfolio-tab" data-bs-toggle="pill" data-bs-target="#portfolio" type="button" role="tab">Portfolio</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabContent">
+
+            <!-- SINGLE ASSET TAB -->
+            <div class="tab-pane fade show active" id="single" role="tabpanel">
+                <div class="row">
+                    <!-- Left Column: Inputs -->
+                    <div class="col-lg-3">
+                        <div class="card">
+                            <div class="card-header">Parameters</div>
+                            <div class="card-body">
+                                <ul class="nav nav-tabs mb-3" id="modeTabs" role="tablist">
+                                    <li class="nav-item"><button class="nav-link active" id="tinkoff-tab" data-bs-toggle="tab" data-bs-target="#tinkoff">API</button></li>
+                                    <li class="nav-item"><button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual">Manual</button></li>
+                                    <li class="nav-item"><button class="nav-link" id="random-tab" data-bs-toggle="tab" data-bs-target="#random">Random</button></li>
+                                </ul>
+
+                                <div class="tab-content" id="modeContent">
+                                    <div class="tab-pane fade show active" id="tinkoff">
+                                        <label class="form-label small fw-bold">Instrument</label>
+                                        <div class="input-group mb-2">
+                                            <input type="text" class="form-control form-control-sm" id="instrumentName" placeholder="Ticker (example: SBER)">
+                                            <button class="btn btn-outline-secondary btn-sm" type="button" id="searchBtn">Search</button>
+                                        </div>
+                                        <div id="searchResults" class="list-group mb-3 small" style="max-height: 150px; overflow-y: auto;"></div>
+                                        <div id="selectedInstrument" class="alert alert-success py-1 px-2 d-none small mb-2"></div>
+                                        <input type="hidden" id="figi">
+
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label class="form-label small">Start</label>
+                                                <input type="date" class="form-control form-control-sm" id="startDate">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small">End</label>
+                                                <input type="date" class="form-control form-control-sm" id="endDate">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="tab-pane fade" id="manual">
+                                        <div class="mb-3">
+                                            <label class="form-label small">Prices</label>
+                                            <textarea class="form-control form-control-sm" id="manualPrices" rows="5"></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="tab-pane fade" id="random">
+                                        <p class="text-muted small">Geometric Brownian Motion simulation.</p>
+                                    </div>
+                                </div>
+
+                                <hr class="my-3">
+
+                                <div class="mb-2">
+                                    <label class="form-label small">Confidence Level</label>
+                                    <select class="form-select form-select-sm" id="confidence">
+                                        <option value="0.95">95%</option>
+                                        <option value="0.99">99%</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small">Position Size</label>
+                                    <input type="number" class="form-control form-control-sm" id="positionSize" value="1">
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small">Spread %</label>
+                                        <input type="number" class="form-control form-control-sm" id="spreadPercent" value="0.1" step="0.01">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Liq. Days</label>
+                                        <input type="number" class="form-control form-control-sm" id="liquidationDays" value="1">
+                                    </div>
+                                </div>
+
+                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="calculateBtn">Calculate Metrics</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Results -->
+                    <div class="col-lg-9">
+                        <div id="results" class="d-none">
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body text-center">
+                                            <div class="metric-label">Value at Risk (VaR)</div>
+                                            <div class="metric-value text-danger" id="res-var">--</div>
+                                            <div class="small text-muted mt-2">Historical: <span id="res-hvar">--</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body text-center">
+                                            <div class="metric-label">Expected Shortfall (ES)</div>
+                                            <div class="metric-value text-warning" id="res-es">--</div>
+                                            <div class="small text-muted mt-2">Tail Risk Measure</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body text-center">
+                                            <div class="metric-label">Liquidity Adjusted VaR</div>
+                                            <div class="metric-value text-dark" id="res-lvar">--</div>
+                                            <div class="small text-muted mt-2">Stressed: <span id="res-lvar-stress">--</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="backtest-body" class="mb-3"></div>
+
+                            <div class="card">
+                                <div class="card-header">Price History</div>
+                                <div class="card-body p-2">
+                                    <div id="chartContainer" class="chart-container"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="results-placeholder" class="text-center py-5 text-muted bg-white rounded border">
+                            <h5 class="mt-3">No Data Calculated</h5>
+                            <p>Select an instrument and click Calculate.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="tab-content" id="modeContent">
-                    <!-- Tinkoff Mode -->
-                    <div class="tab-pane fade show active" id="tinkoff" role="tabpanel">
-                        <form id="searchForm" class="row g-3">
-                            <div class="col-auto">
-                                <input type="text" class="form-control" id="instrumentName" placeholder="Ticker or Name">
-                            </div>
-                            <div class="col-auto">
-                                <button type="submit" class="btn btn-primary mb-3">Search</button>
-                            </div>
-                        </form>
-                        <div id="searchResults" class="list-group mt-3"></div>
-                        <div id="selectedInstrument" class="mt-3 text-success fw-bold"></div>
-                        <input type="hidden" id="figi">
 
-                        <div class="row mt-3">
-                            <div class="col">
-                                <label for="startDate" class="form-label">Start Date</label>
-                                <input type="date" class="form-control" id="startDate">
+            <!-- PORTFOLIO TAB -->
+            <div class="tab-pane fade" id="portfolio" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">Portfolio Composition</div>
+                            <div class="card-body">
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control form-control-sm" id="port-search-input" placeholder="Ticker (example: SBER">
+                                    <button class="btn btn-outline-secondary btn-sm" type="button" id="port-search-btn">Add</button>
+                                </div>
+                                <div id="port-search-results" class="list-group mb-3 position-absolute w-100 shadow" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+
+                                <div class="table-responsive mb-3">
+                                    <table class="table table-sm table-hover" id="portfolio-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Asset</th>
+                                                <th width="35%">Weight</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+
+                                <div class="alert alert-warning py-1 px-2 small" id="weight-warning" style="display:none;">
+                                    Weights != 1.0. Will normalize.
+                                </div>
+
+                                <div class="row g-2 mt-3">
+                                    <div class="col-6">
+                                        <label class="form-label small">Start</label>
+                                        <input type="date" class="form-control form-control-sm" id="port-start">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">End</label>
+                                        <input type="date" class="form-control form-control-sm" id="port-end">
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-dark w-100 mt-3 btn-sm" id="calc-portfolio-btn">Analyze Portfolio</button>
                             </div>
-                            <div class="col">
-                                <label for="endDate" class="form-label">End Date</label>
-                                <input type="date" class="form-control" id="endDate">
+                        </div>
+
+                        <!-- Asset Allocation Chart -->
+                        <div class="card d-none" id="allocation-card">
+                            <div class="card-header">Asset Allocation</div>
+                            <div class="card-body p-0">
+                                <div id="allocation-chart" style="height: 250px;"></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Manual Mode -->
-                    <div class="tab-pane fade" id="manual" role="tabpanel">
-                        <div class="mb-3">
-                            <label for="manualPrices" class="form-label">Enter prices (space or comma separated)</label>
-                            <textarea class="form-control" id="manualPrices" rows="3" placeholder="100.5 101.2 99.8 102.0 ..."></textarea>
+                    <div class="col-lg-8">
+                        <div id="port-results" class="d-none">
+                            <!-- Portfolio Metrics -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <div class="card bg-dark text-white h-100">
+                                        <div class="card-body text-center">
+                                            <div class="metric-label text-white-50">Portfolio VaR (95%)</div>
+                                            <div class="metric-value text-white" id="port-var-val">--</div>
+                                            <div class="small text-white-50 mt-2">Annual Volatility: <span id="port-vol">--</span>%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card h-100">
+                                        <div class="card-body text-center">
+                                            <div class="metric-label">Expected Annual Return</div>
+                                            <div class="metric-value text-success" id="port-return">--</div>
+                                            <div class="small text-muted mt-2">Based on historical data</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Efficient Frontier -->
+                            <div class="card mb-3">
+                                <div class="card-header">Efficient Frontier (Risk vs Return)</div>
+                                <div class="card-body p-2">
+                                    <div id="frontier-chart" class="chart-container"></div>
+                                </div>
+                            </div>
+
+                            <!-- Cumulative Returns -->
+                            <div class="card mb-3">
+                                <div class="card-header">Cumulative Performance</div>
+                                <div class="card-body p-2">
+                                    <div id="cumulative-chart" class="chart-container"></div>
+                                </div>
+                            </div>
+
+                            <!-- Correlation Matrix -->
+                            <div class="card">
+                                <div class="card-header">Correlation Matrix</div>
+                                <div class="card-body p-2">
+                                    <div id="correlation-matrix" style="height: 350px;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="port-placeholder" class="text-center py-5 text-muted bg-white rounded border">
+                            <h5 class="mt-3">Portfolio Analysis</h5>
+                            <p>Add something!.</p>
                         </div>
                     </div>
-
-                    <!-- Random Mode -->
-                    <div class="tab-pane fade" id="random" role="tabpanel">
-                        <p>Generates 100 days of random price data (Geometric Brownian Motion).</p>
-                        <button type="button" class="btn btn-secondary" id="generateRandomBtn">Generate & Calculate</button>
-                    </div>
                 </div>
-
-                <hr>
-
-                <div class="mb-3">
-                    <label for="confidence" class="form-label">Confidence Level</label>
-                    <select class="form-select" id="confidence">
-                        <option value="0.95">95%</option>
-                        <option value="0.99">99%</option>
-                    </select>
-                </div>
-
-                <button type="button" class="btn btn-success w-100" id="calculateBtn">Calculate Risk</button>
             </div>
         </div>
-
-        <div id="results" class="mt-4"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const showLoading = () => document.getElementById('loading').classList.remove('d-none');
+        const hideLoading = () => document.getElementById('loading').classList.add('d-none');
+
+        let portfolioItems = [];
         let currentMode = 'tinkoff';
 
-        document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
-            tab.addEventListener('shown.bs.tab', event => {
-                currentMode = event.target.id.replace('-tab', '');
-                console.log("Mode switched to:", currentMode);
-            });
+        // --- SINGLE ASSET ---
+        document.querySelectorAll('#modeTabs button').forEach(btn => {
+            btn.addEventListener('shown.bs.tab', e => currentMode = e.target.id.replace('-tab', ''));
         });
 
-        // Search Logic
-        document.getElementById('searchForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('instrumentName').value;
-            const res = await fetch(`/api/search?query=${name}`);
-            const data = await res.json();
-
-            const list = document.getElementById('searchResults');
-            list.innerHTML = '';
-
-            if (data.length === 0) {
-                list.innerHTML = '<div class="alert alert-warning">No instruments found.</div>';
-                return;
-            }
-
-            data.forEach(item => {
-                const a = document.createElement('a');
-                a.className = 'list-group-item list-group-item-action';
-                a.innerText = `${item.name} (${item.ticker}) - ${item.type}`;
-                a.href = '#';
-                a.onclick = () => {
-                    document.getElementById('selectedInstrument').innerText = `Selected: ${item.name} (${item.ticker})`;
-                    document.getElementById('figi').value = item.figi;
-                    list.innerHTML = '';
-                };
-                list.appendChild(a);
-            });
-        });
-
-        // Calculate Logic
-        document.getElementById('calculateBtn').addEventListener('click', async () => {
-            const confidence = document.getElementById('confidence').value;
-            let payload = {
-                mode: currentMode,
-                confidence: parseFloat(confidence)
-            };
-
-            if (currentMode === 'tinkoff') {
-                payload.figi = document.getElementById('figi').value;
-                payload.start_date = document.getElementById('startDate').value;
-                payload.end_date = document.getElementById('endDate').value;
-
-                if (!payload.figi) {
-                    alert("Please select an instrument first.");
+        document.getElementById('searchBtn').addEventListener('click', async () => {
+            const query = document.getElementById('instrumentName').value;
+            if(!query) return;
+            showLoading();
+            try {
+                const res = await fetch(`/api/search?query=${query}`);
+                const data = await res.json();
+                const list = document.getElementById('searchResults');
+                list.innerHTML = '';
+                if (data.length === 0) {
+                    list.innerHTML = '<div class="list-group-item text-danger">No instruments found.</div>';
                     return;
                 }
-            } else if (currentMode === 'manual') {
-                payload.manual_prices = document.getElementById('manualPrices').value;
-            } else if (currentMode === 'random') {
-                // No extra params needed
-            }
+                data.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                    btn.innerHTML = `<span><strong>${item.ticker}</strong> <small class="text-muted">${item.name}</small></span>`;
+                    btn.onclick = () => {
+                        document.getElementById('figi').value = item.figi;
+                        document.getElementById('selectedInstrument').innerText = `${item.ticker} - ${item.name}`;
+                        document.getElementById('selectedInstrument').classList.remove('d-none');
+                        list.innerHTML = '';
+                    };
+                    list.appendChild(btn);
+                });
+            } finally { hideLoading(); }
+        });
 
-            const res = await fetch('/api/calculate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
+        document.getElementById('calculateBtn').addEventListener('click', async () => {
+            showLoading();
+            try {
+                const payload = {
+                    mode: currentMode,
+                    confidence: parseFloat(document.getElementById('confidence').value),
+                    position_size: parseFloat(document.getElementById('positionSize').value),
+                    spread_percent: parseFloat(document.getElementById('spreadPercent').value),
+                    liquidation_days: parseInt(document.getElementById('liquidationDays').value),
+                    start_date: document.getElementById('startDate').value,
+                    end_date: document.getElementById('endDate').value,
+                    figi: document.getElementById('figi').value,
+                    manual_prices: document.getElementById('manualPrices').value
+                };
 
-            const result = await res.json();
-            const resultsDiv = document.getElementById('results');
+                const res = await fetch('/api/calculate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
 
-            if (result.error) {
-                resultsDiv.innerHTML = `<div class="alert alert-danger">${result.error}</div>`;
-            } else {
-                // Format prices for display (first 10 and last 5)
-                let pricesDisplay = "";
-                if (result.prices && result.prices.length > 0) {
-                    const prices = result.prices.map(p => p.toFixed(2));
-                    if (prices.length > 20) {
-                        pricesDisplay = prices.slice(0, 10).join(", ") + " ... " + prices.slice(-5).join(", ");
-                    } else {
-                        pricesDisplay = prices.join(", ");
-                    }
+                document.getElementById('results').classList.remove('d-none');
+                document.getElementById('results-placeholder').classList.add('d-none');
+
+                const fmt = (v) => v.toLocaleString('ru-RU', {style: 'currency', currency: 'RUB'});
+                document.getElementById('res-var').innerText = fmt(data.parametric_var.var_loss);
+                document.getElementById('res-hvar').innerText = fmt(data.historical_var.var_loss);
+                document.getElementById('res-es').innerText = fmt(data.es.es_loss);
+                if (data.lvar) {
+                    document.getElementById('res-lvar').innerText = fmt(data.lvar.lvar_unwind);
+                    document.getElementById('res-lvar-stress').innerText = fmt(data.lvar.lvar_stressed);
                 }
 
-                resultsDiv.innerHTML = `
-                    <div class="card">
-                        <div class="card-header bg-info text-white">Results</div>
-                        <div class="card-body">
-                            <p><strong>Data Points:</strong> ${result.prices_count}</p>
-                            <p><strong>Last Price:</strong> ${result.last_price.toFixed(2)}</p>
+                const bt = data.backtest;
+                const btColor = bt.result.includes('Green') ? 'success' : (bt.result.includes('Yellow') ? 'warning' : 'danger');
+                document.getElementById('backtest-body').innerHTML = `
+                    <div class="alert alert-${btColor} mb-0 py-2">
+                        <strong>Backtest: ${bt.result}</strong>. Failures: ${bt.failures}/${bt.total_observations} (p=${bt.p_value.toFixed(3)})
+                    </div>`;
 
-                            <div class="alert alert-secondary">
-                                <strong>Prices Used:</strong><br>
-                                <small>${pricesDisplay}</small>
-                            </div>
+                if (data.candles) {
+                    const trace = {
+                        x: data.candles.map(c => c.date),
+                        close: data.candles.map(c => c.close),
+                        high: data.candles.map(c => c.high),
+                        low: data.candles.map(c => c.low),
+                        open: data.candles.map(c => c.open),
+                        type: 'candlestick', name: 'Price'
+                    };
+                    Plotly.newPlot('chartContainer', [trace], {
+                        margin: {l: 40, r: 20, t: 20, b: 40},
+                        xaxis: {rangeslider: {visible: false}},
+                        yaxis: {title: 'Price'}
+                    }, {responsive: true});
+                }
+            } catch (e) { alert(e.message); } finally { hideLoading(); }
+        });
 
-                            <hr>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="alert alert-primary">
-                                        <h5>Historical VaR</h5>
-                                        <h3>${result.historical_var.var_loss.toFixed(2)}</h3>
-                                        <small>Confidence: ${result.historical_var.confidence * 100}%</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="alert alert-warning">
-                                        <h5>Expected Shortfall</h5>
-                                        <h3>${result.es.es_loss.toFixed(2)}</h3>
-                                        <small>Tail Count: ${result.es.tail_count}</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="alert alert-success">
-                                        <h5>Parametric VaR</h5>
-                                        <h3>${result.parametric_var.var_loss.toFixed(2)}</h3>
-                                        <small>Sigma: ${result.parametric_var.sigma.toFixed(4)}</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        // --- PORTFOLIO ---
+        document.getElementById('port-search-btn').addEventListener('click', async () => {
+            const query = document.getElementById('port-search-input').value;
+            if(!query) return;
+            showLoading();
+            try {
+                const res = await fetch(`/api/search?query=${query}`);
+                const data = await res.json();
+                const list = document.getElementById('port-search-results');
+                list.innerHTML = '';
+                if (!data || data.length === 0) {
+                    list.innerHTML = '<div class="list-group-item list-group-item-warning">No instruments found.</div>';
+                    return;
+                }
+                data.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = 'list-group-item list-group-item-action';
+                    btn.innerHTML = `<strong>${item.ticker}</strong> - ${item.name}`;
+                    btn.onclick = () => {
+                        addPortfolioItem(item);
+                        list.innerHTML = '';
+                        document.getElementById('port-search-input').value = '';
+                    };
+                    list.appendChild(btn);
+                });
+            } finally { hideLoading(); }
+        });
+
+        function addPortfolioItem(item) {
+            if (portfolioItems.find(i => i.figi === item.figi)) return;
+            portfolioItems.push({ ...item, weight: 0.0 });
+            renderPortfolioTable();
+        }
+
+        function renderPortfolioTable() {
+            const tbody = document.querySelector('#portfolio-table tbody');
+            tbody.innerHTML = '';
+            let totalWeight = 0;
+            portfolioItems.forEach((item, idx) => {
+                totalWeight += item.weight;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><div class="fw-bold">${item.ticker}</div></td>
+                    <td><input type="number" class="form-control form-control-sm weight-input" data-idx="${idx}" value="${item.weight}" step="0.1" min="0" max="1"></td>
+                    <td class="text-end"><button class="btn btn-link text-danger btn-sm p-0" onclick="removePortItem(${idx})">Remove</button></td>
                 `;
-            }
-        });
+                tbody.appendChild(tr);
+            });
+            document.querySelectorAll('.weight-input').forEach(inp => {
+                inp.addEventListener('change', (e) => {
+                    portfolioItems[e.target.dataset.idx].weight = parseFloat(e.target.value);
+                    renderPortfolioTable();
+                });
+            });
+            const warning = document.getElementById('weight-warning');
+            warning.style.display = (portfolioItems.length > 0 && Math.abs(totalWeight - 1.0) > 0.01) ? 'block' : 'none';
+        }
 
-        // Quick generate button inside Random tab
-        document.getElementById('generateRandomBtn').addEventListener('click', () => {
-             document.getElementById('calculateBtn').click();
-        });
+        window.removePortItem = (idx) => {
+            portfolioItems.splice(idx, 1);
+            renderPortfolioTable();
+        };
 
+        document.getElementById('calc-portfolio-btn').addEventListener('click', async () => {
+            if (portfolioItems.length < 2) { alert("Add at least 2 assets."); return; }
+            showLoading();
+            try {
+                const payload = {
+                    items: portfolioItems.map(i => ({figi: i.figi, ticker: i.ticker, weight: i.weight})),
+                    start_date: document.getElementById('port-start').value,
+                    end_date: document.getElementById('port-end').value,
+                    confidence: 0.95,
+                    portfolio_value: 100000
+                };
+                const res = await fetch('/api/calculate_portfolio', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                document.getElementById('port-results').classList.remove('d-none');
+                document.getElementById('port-placeholder').classList.add('d-none');
+                document.getElementById('allocation-card').classList.remove('d-none');
+
+                const fmt = (v) => v.toLocaleString('ru-RU', {style: 'currency', currency: 'RUB'});
+                document.getElementById('port-var-val').innerText = fmt(data.portfolio_metrics.var_value);
+                document.getElementById('port-vol').innerText = (data.portfolio_metrics.annual_volatility * 100).toFixed(2);
+                document.getElementById('port-return').innerText = fmt(data.portfolio_metrics.annual_return);
+
+                // 1. Correlation Matrix
+                const corr = data.correlation_matrix;
+                const labels = Object.keys(corr);
+                const z = labels.map(r => labels.map(c => corr[r][c]));
+
+                Plotly.newPlot('correlation-matrix', [{
+                    z: z, x: labels, y: labels, type: 'heatmap', colorscale: 'RdBu', zmin: -1, zmax: 1,
+                    text: z.map(row => row.map(val => val.toFixed(2))), texttemplate: "%{text}", hoverinfo: 'z'
+                }], {
+                    margin: {l: 50, r: 50, t: 20, b: 50},
+                }, {responsive: true});
+
+                // 2. Efficient Frontier
+                const ef = data.efficient_frontier;
+                const currentVol = data.portfolio_metrics.annual_volatility;
+                const currentRet = data.portfolio_metrics.annual_return;
+
+                Plotly.newPlot('frontier-chart', [
+                    {
+                        x: ef.volatility, y: ef.returns, mode: 'markers', type: 'scatter',
+                        marker: {color: ef.sharpe, colorscale: 'Viridis', size: 5, opacity: 0.6},
+                        name: 'Simulated Portfolios'
+                    },
+                    {
+                        x: [currentVol], y: [currentRet], mode: 'markers', type: 'scatter',
+                        marker: {color: 'red', size: 12, symbol: 'star'},
+                        name: 'Current Portfolio'
+                    }
+                ], {
+                    xaxis: {title: 'Annual Volatility (Risk)'},
+                    yaxis: {title: 'Annual Return'},
+                    margin: {l: 50, r: 20, t: 20, b: 40},
+                    showlegend: true
+                }, {responsive: true});
+
+                // 3. Cumulative Returns
+                const dates = data.dates;
+                const traces = [];
+                // Portfolio
+                traces.push({
+                    x: dates, y: data.portfolio_cumulative_return,
+                    mode: 'lines', name: 'Portfolio', line: {width: 3, color: 'black'}
+                });
+                // Assets
+                for (const [key, vals] of Object.entries(data.assets_cumulative_returns)) {
+                    traces.push({
+                        x: dates, y: Object.values(vals),
+                        mode: 'lines', name: key, line: {width: 1}, opacity: 0.5
+                    });
+                }
+                Plotly.newPlot('cumulative-chart', traces, {
+                    margin: {l: 40, r: 20, t: 20, b: 40},
+                    yaxis: {title: 'Growth of 1 RUB'},
+                    showlegend: true
+                }, {responsive: true});
+
+                // 4. Allocation Pie Chart
+                Plotly.newPlot('allocation-chart', [{
+                    values: portfolioItems.map(i => i.weight),
+                    labels: portfolioItems.map(i => i.ticker),
+                    type: 'pie', hole: 0.4
+                }], {
+                    margin: {l: 20, r: 20, t: 20, b: 20},
+                    showlegend: false
+                }, {responsive: true});
+
+            } catch (e) { alert(e.message); } finally { hideLoading(); }
+        });
     </script>
 </body>
 </html>
