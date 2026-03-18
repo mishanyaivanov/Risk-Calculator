@@ -14,6 +14,16 @@ from riskcalc.option_var import (
     simulate_full_revaluation_pnl,
     simulate_full_revaluation_pnl_multifactor,
 )
+from riskcalc.backtesting import (
+    christoffersen_conditional_coverage_test,
+    es_realized_shortfall_diagnostics,
+    rolling_historical_var_es,
+)
+from riskcalc.risk_attribution import delta_normal_var_contributions
+from riskcalc.stress_testing import (
+    build_standard_stress_scenarios,
+    evaluate_full_revaluation_stress_scenario,
+)
 
 # One-tailed z-values for left-tail VaR at supported confidence levels.
 Z_BY_CONFIDENCE = {
@@ -364,7 +374,6 @@ def correlation_matrix_from_return_series(series_list: list[list[float]]) -> lis
             matrix[j][i] = corr
     return matrix
 
-
 def ask_return_distribution_params() -> tuple[float, float]:
     print("Параметры доходности базового актива (дневные):")
     print("1. Оценить mu и sigma по историческому ряду доходностей")
@@ -516,6 +525,89 @@ def ask_full_revaluation_extra_shocks() -> dict[str, float]:
     }
 
 
+def ask_custom_stress_scenarios(
+    underlying_order: list[str],
+) -> list[dict[str, float | str | dict[str, float]]]:
+    scenarios: list[dict[str, float | str | dict[str, float]]] = []
+    count_raw = input("Сколько пользовательских stress-сценариев добавить (по умолчанию 0): ").strip()
+    count = int(count_raw) if count_raw else 0
+    if count < 0:
+        raise ValueError("Количество пользовательских сценариев не может быть отрицательным.")
+
+    for idx in range(1, count + 1):
+        print(f"\nПользовательский stress-сценарий {idx}:")
+        name = input("Название сценария (по умолчанию Custom): ").strip() or f"Custom {idx}"
+        shocks: dict[str, float] = {}
+        for underlying in underlying_order:
+            raw = input(
+                f"[{underlying}] Шок доходности за горизонт (напр. -10, -0.10 или -10%): "
+            ).strip()
+            shocks[underlying] = parse_percent_or_decimal(raw, f"Шок доходности для {underlying}")
+
+        vol_raw = input("Сдвиг implied vol (additive, напр. +5% -> 5 или 0.05, по умолчанию 0): ").strip()
+        volatility_shift = parse_percent_or_decimal(vol_raw, "Сдвиг implied vol") if vol_raw else 0.0
+
+        rate_raw = input("Сдвиг ставки r (additive, напр. +25 bps -> 0.25% или 0.0025, по умолчанию 0): ").strip()
+        rate_shift = parse_percent_or_decimal(rate_raw, "Сдвиг ставки r") if rate_raw else 0.0
+
+        scenarios.append(
+            {
+                "name": name,
+                "underlying_shocks": shocks,
+                "volatility_shift": volatility_shift,
+                "rate_shift": rate_shift,
+            }
+        )
+    return scenarios
+
+
+def run_stress_scenarios_for_option_portfolio(
+    positions: list[dict[str, float | str]],
+    horizon_days: int,
+    underlying_order: list[str],
+) -> None:
+    run_raw = input("\nСчитать deterministic stress-сценарии через Full Revaluation? (y/n, по умолчанию y): ").strip().lower()
+    if run_raw in {"n", "no", "н", "нет"}:
+        return
+
+    include_standard_raw = input("Добавить стандартные stress-сценарии? (y/n, по умолчанию y): ").strip().lower()
+    include_standard = include_standard_raw not in {"n", "no", "н", "нет"}
+
+    scenarios: list[dict[str, float | str | dict[str, float]]] = []
+    if include_standard:
+        scenarios.extend(build_standard_stress_scenarios(underlying_order))
+    scenarios.extend(ask_custom_stress_scenarios(underlying_order))
+
+    if not scenarios:
+        print("Stress-сценарии не заданы, блок пропущен.")
+        return
+
+    results: list[dict[str, float | str]] = []
+    for scenario in scenarios:
+        scenario_result = evaluate_full_revaluation_stress_scenario(
+            positions=positions,
+            horizon_days=horizon_days,
+            underlying_return_shocks=dict(scenario["underlying_shocks"]),
+            volatility_shift=float(scenario["volatility_shift"]),
+            rate_shift=float(scenario["rate_shift"]),
+        )
+        results.append(
+            {
+                "name": str(scenario["name"]),
+                "total_pnl": float(scenario_result["total_pnl"]),
+                "stressed_value": float(scenario_result["stressed_value"]),
+            }
+        )
+
+    results.sort(key=lambda row: float(row["total_pnl"]))
+    print("\nStress-сценарии (хуже -> лучше):")
+    for row in results:
+        print(
+            f"- {row['name']}: total_pnl={float(row['total_pnl']):,.6f}, "
+            f"stressed_value={float(row['stressed_value']):,.6f}"
+        )
+
+
 def run_options_greeks_block() -> None:
     print("Модель: Black-Scholes-Merton для европейских опционов.")
     positions = ask_option_positions()
@@ -594,6 +686,8 @@ def run_option_var_block() -> None:
     else:
         print("\nВ портфеле один underlying: используется однофакторный режим.")
 
+    delta_normal_contributions = None
+
     if not multifactor:
         mu_daily, sigma_daily = ask_return_distribution_params()
         mu_horizon = mu_daily * horizon_days
@@ -647,6 +741,13 @@ def run_option_var_block() -> None:
             covariance_horizon=covariance_horizon,
             z_value=z,
         )
+        delta_normal_contributions = delta_normal_var_contributions(
+            factor_names=underlying_order,
+            delta_cash_values=delta_cash_vec,
+            mu_horizon_values=mu_horizon_vec,
+            covariance_horizon=covariance_horizon,
+            z_value=z,
+        )
 
         print("\nПараметры модели:")
         print(f"- режим: мультифакторный")
@@ -660,6 +761,22 @@ def run_option_var_block() -> None:
                 f"sigma_daily={sigma_daily_vec[idx]:.6f}, "
                 f"delta_cash={delta_cash_vec[idx]:,.6f}, "
                 f"gamma_cash={gamma_cash_vec[idx]:,.6f}"
+            )
+        print("\nDelta-Normal risk attribution by factor:")
+        print(
+            f"- portfolio_mu={float(delta_normal_contributions['portfolio_mu']):,.6f}, "
+            f"portfolio_sigma={float(delta_normal_contributions['portfolio_sigma']):,.6f}, "
+            f"portfolio_var={float(delta_normal_contributions['portfolio_var']):,.6f}"
+        )
+        print(
+            f"- sum_component_var={float(delta_normal_contributions['sum_component_var']):,.6f}"
+        )
+        for row in list(delta_normal_contributions["rows"]):
+            print(
+                f"  {row['factor']}: "
+                f"marginal_var={float(row['marginal_var']):,.6f}, "
+                f"component_var={float(row['component_var']):,.6f}, "
+                f"share={float(row['component_share_pct']):.2f}%"
             )
 
     print("\nDelta-Normal VaR:")
@@ -684,6 +801,11 @@ def run_option_var_block() -> None:
     run_full_mc = run_full_mc_raw not in {"n", "no", "н", "нет"}
 
     if not run_dg_mc and not run_full_mc:
+        run_stress_scenarios_for_option_portfolio(
+            positions=positions,
+            horizon_days=horizon_days,
+            underlying_order=underlying_order,
+        )
         return
 
     sims_raw = input("Количество симуляций (по умолчанию 50000): ").strip()
@@ -745,6 +867,11 @@ def run_option_var_block() -> None:
             )
             print(f"- VaR={var_loss:,.6f} (опорный PnL={var_pnl:,.6f}, k={k})")
             print(f"- ES={es_loss:,.6f} (tail mean PnL={es_pnl:,.6f}, tail_count={tail_count})")
+        run_stress_scenarios_for_option_portfolio(
+            positions=positions,
+            horizon_days=horizon_days,
+            underlying_order=underlying_order,
+        )
         return
 
     if run_dg_mc:
@@ -793,6 +920,12 @@ def run_option_var_block() -> None:
         )
         print(f"- VaR={var_loss:,.6f} (опорный PnL={var_pnl:,.6f}, k={k})")
         print(f"- ES={es_loss:,.6f} (tail mean PnL={es_pnl:,.6f}, tail_count={tail_count})")
+
+    run_stress_scenarios_for_option_portfolio(
+        positions=positions,
+        horizon_days=horizon_days,
+        underlying_order=underlying_order,
+    )
 
 
 def ask_confidence() -> float:
@@ -858,6 +991,93 @@ def ask_portfolio_pnl() -> list[float]:
         return aggregate_pnl_series(series_list)
 
     raise ValueError("Нужно выбрать 1 или 2.")
+
+
+def _traffic_light_label(verdict: str) -> str:
+    if verdict == "green":
+        return "Green (acceptable)"
+    if verdict == "yellow":
+        return "Yellow (watchlist)"
+    if verdict == "red":
+        return "Red (rejected)"
+    return verdict
+
+
+def run_rolling_backtest_block() -> None:
+    confidence = ask_confidence()
+    pnl = ask_portfolio_pnl()
+    window_raw = input("Rolling-окно для прогнозов VaR/ES (по умолчанию 250): ").strip()
+    window = int(window_raw) if window_raw else 250
+
+    history = rolling_historical_var_es(
+        pnl=pnl,
+        confidence=confidence,
+        window=window,
+    )
+    realized = list(history["realized_pnl"])
+    var_thresholds = list(history["var_pnl_thresholds"])
+    var_losses = list(history["var_losses"])
+    es_losses = list(history["es_losses"])
+    exceptions = list(history["exceptions"])
+
+    alpha = 1.0 - confidence
+    cc = christoffersen_conditional_coverage_test(exceptions, alpha)
+    es_diag = es_realized_shortfall_diagnostics(realized, var_thresholds, es_losses)
+
+    pof = dict(cc["pof"])
+    independence = dict(cc["independence"])
+
+    print("\n=== Rolling VaR/ES Backtest (Historical Forecasts) ===")
+    print(f"confidence={int(confidence * 100)}%, alpha={alpha:.4f}, window={window}")
+    print(f"backtest_observations={len(exceptions)}")
+    print(
+        f"exceptions={int(pof['exceptions'])} "
+        f"(expected={float(pof['expected_exceptions']):.2f}, "
+        f"rate={float(pof['exception_rate']):.4f})"
+    )
+
+    print("\nKupiec POF:")
+    print(
+        f"- LR={float(pof['lr_pof']):.4f}, p-value={float(pof['p_value']):.4f}, "
+        f"status={_traffic_light_label(str(pof['verdict']))}"
+    )
+
+    print("\nChristoffersen Independence:")
+    print(
+        f"- transitions: n00={int(independence['n00'])}, n01={int(independence['n01'])}, "
+        f"n10={int(independence['n10'])}, n11={int(independence['n11'])}"
+    )
+    print(
+        f"- LR={float(independence['lr_ind']):.4f}, p-value={float(independence['p_value']):.4f}, "
+        f"status={_traffic_light_label(str(independence['verdict']))}"
+    )
+
+    print("\nConditional Coverage (POF + Independence):")
+    print(
+        f"- LR={float(cc['lr_cc']):.4f}, p-value={float(cc['p_value']):.4f}, "
+        f"status={_traffic_light_label(str(cc['verdict']))}"
+    )
+
+    print("\nES diagnostics on breach days:")
+    print(
+        f"- tail_events={int(es_diag['tail_events'])}, "
+        f"avg_realized_tail_loss={es_diag['avg_realized_tail_loss']:,.6f}, "
+        f"avg_predicted_es={es_diag['avg_predicted_es']:,.6f}"
+    )
+    print(
+        f"- tail_loss_ratio={es_diag['tail_loss_ratio']:.4f} "
+        "(около 1.0 лучше), "
+        f"tail_bias={es_diag['tail_bias']:,.6f}"
+    )
+
+    if realized:
+        print("\nПоследняя точка backtest:")
+        print(
+            f"- realized_pnl={realized[-1]:,.6f}, "
+            f"forecast_var={var_losses[-1]:,.6f}, "
+            f"forecast_es={es_losses[-1]:,.6f}, "
+            f"breach={'yes' if exceptions[-1] else 'no'}"
+        )
 
 
 def run_historical_block() -> None:
@@ -944,7 +1164,8 @@ def run_calculator() -> None:
     print("4. Коррекция VaR на период ликвидации (linear unwind)")
     print("5. Black-Scholes + Greeks (одна опция или портфель)")
     print("6. Option VaR: Delta-Normal, Delta-Gamma и Full Revaluation MC (+vol/rate)")
-    choice = input("Выберите пункт (1-6): ").strip()
+    print("7. Rolling Backtest VaR/ES (Kupiec + Christoffersen + ES diagnostics)")
+    choice = input("Выберите пункт (1-7): ").strip()
 
     if choice == "1":
         run_historical_block()
@@ -970,7 +1191,11 @@ def run_calculator() -> None:
         run_option_var_block()
         return
 
-    raise ValueError("Нужно выбрать пункт 1, 2, 3, 4, 5 или 6.")
+    if choice == "7":
+        run_rolling_backtest_block()
+        return
+
+    raise ValueError("Нужно выбрать пункт 1, 2, 3, 4, 5, 6 или 7.")
 
 
 if __name__ == "__main__":
