@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.stats import norm, chi2
+from scipy.stats import norm
 from typing import List, Dict, Tuple
 
 def calculate_portfolio_var(
@@ -60,66 +60,10 @@ def generate_efficient_frontier(
         
         results[0,i] = portfolio_std_dev
         results[1,i] = portfolio_return
-        results[2,i] = results[1,i] / results[0,i]
+        results[2,i] = results[1,i] / results[0,i] if results[0,i] > 0 else 0
         
     return {
         "volatility": results[0].tolist(),
         "returns": results[1].tolist(),
         "sharpe": results[2].tolist()
-    }
-
-def kupiec_pof_test(
-    actual_returns: List[float], 
-    var_estimates: List[float], 
-    confidence: float = 0.95
-) -> Dict:
-    """
-    Performs the Kupiec Proportion of Failures (POF) test.
-    """
-    if len(actual_returns) != len(var_estimates):
-        raise ValueError("Length of returns and VaR estimates must match.")
-        
-    n = len(actual_returns)
-    failures = 0
-    
-    for r, var in zip(actual_returns, var_estimates):
-        if r < -var:
-            failures += 1
-            
-    p = 1.0 - confidence
-    
-    if failures == 0:
-        return {
-            "failures": 0,
-            "total_observations": n,
-            "failure_rate": 0.0,
-            "expected_rate": p,
-            "lr_statistic": 0.0, 
-            "p_value": 1.0, 
-            "result": "Green (Too Conservative?)"
-        }
-
-    failure_rate = failures / n
-    
-    numerator = ((1 - p) ** (n - failures)) * (p ** failures)
-    denominator = ((1 - failure_rate) ** (n - failures)) * (failure_rate ** failures)
-    
-    lr_pof = -2 * np.log(numerator / denominator)
-    p_value = 1 - chi2.cdf(lr_pof, 1)
-    
-    if p_value > 0.05:
-        result = "Green (Acceptable)"
-    elif 0.01 < p_value <= 0.05:
-        result = "Yellow (Warning)"
-    else:
-        result = "Red (Reject)"
-        
-    return {
-        "failures": failures,
-        "total_observations": n,
-        "failure_rate": failure_rate,
-        "expected_rate": p,
-        "lr_statistic": lr_pof,
-        "p_value": p_value,
-        "result": result
     }

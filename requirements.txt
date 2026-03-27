@@ -9,3 +9,5 @@ grpcio
 protobuf
 numpy
 scipy
+aiomoex
+starlette>=0.27.0
