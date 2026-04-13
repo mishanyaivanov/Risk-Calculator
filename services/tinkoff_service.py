@@ -20,6 +20,41 @@ except ImportError:
 
 TOKEN = os.getenv("TINKOFF_TOKEN", "Token")
 
+
+def search_rank(query: str, ticker: str, name: str, instrument_type: str) -> tuple:
+    query_lower = query.strip().lower()
+    ticker_lower = (ticker or "").strip().lower()
+    name_lower = (name or "").strip().lower()
+
+    if ticker_lower == query_lower:
+        bucket = 0
+    elif ticker_lower.startswith(query_lower):
+        bucket = 1
+    elif name_lower == query_lower:
+        bucket = 2
+    elif query_lower in ticker_lower:
+        bucket = 3
+    elif query_lower in name_lower:
+        bucket = 4
+    else:
+        bucket = 5
+
+    type_priority = {
+        "shares": 0,
+        "bonds": 1,
+        "etfs": 2,
+        "currencies": 3,
+    }.get(instrument_type, 9)
+
+    return (
+        bucket,
+        type_priority,
+        abs(len(ticker_lower) - len(query_lower)),
+        abs(len(name_lower) - len(query_lower)),
+        ticker_lower,
+        name_lower,
+    )
+
 def similarity_score(str1: str, str2: str, threshold: float) -> bool:
     """Calculates Levenshtein distance-based similarity."""
     len_str1 = len(str1)
@@ -45,6 +80,7 @@ def find_instruments(name: str, token: str = TOKEN) -> List[Dict]:
         return [{"name": "Tinkoff Library Missing", "ticker": "ERROR", "figi": "", "type": "error"}]
 
     results = []
+    seen_figis = set()
     if token == "Token":
         return []
 
@@ -59,6 +95,9 @@ def find_instruments(name: str, token: str = TOKEN) -> List[Dict]:
                     
                     if similarity_score(name, item.name, thresh_name) or \
                        similarity_score(name, item.ticker, thresh_ticker):
+                        if item.figi in seen_figis:
+                            continue
+                        seen_figis.add(item.figi)
                         results.append({
                             'ticker': item.ticker,
                             'figi': item.figi,
@@ -68,6 +107,7 @@ def find_instruments(name: str, token: str = TOKEN) -> List[Dict]:
     except Exception as e:
         print(f"Error finding instruments: {e}")
         return []
+    results.sort(key=lambda item: search_rank(name, item.get('ticker', ''), item.get('name', ''), item.get('type', '')))
     return results
 
 def _price_to_float(price) -> float:

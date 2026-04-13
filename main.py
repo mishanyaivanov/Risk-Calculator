@@ -28,7 +28,6 @@ from services.backtesting import (
     rolling_historical_var_es,
     christoffersen_conditional_coverage_test,
     es_realized_shortfall_diagnostics,
-    kupiec_pof_test,
 )
 from services.risk_attribution import delta_normal_var_contributions
 from services.stress_testing import evaluate_full_revaluation_stress_scenario, build_standard_stress_scenarios
@@ -45,9 +44,73 @@ from services.linear_risk import linear_derivative_var
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
+
+def has_real_tinkoff_token(token: Optional[str]) -> bool:
+    return bool(token and token.strip() and token.strip() != "Token")
+
+
+def build_risk_status(var_loss: float, position_value: float) -> Dict[str, float | str]:
+    base_value = abs(position_value)
+    share_pct = (var_loss / base_value * 100.0) if base_value > 1e-12 else 0.0
+
+    if share_pct < 2.0:
+        severity = "green"
+        label = "Низкий риск"
+        guidance = "Потеря в плохой день невелика относительно размера позиции."
+    elif share_pct < 5.0:
+        severity = "yellow"
+        label = "Средний риск"
+        guidance = "Позиция чувствительна к плохому дню. Стоит следить за размером позиции и ликвидностью."
+    else:
+        severity = "red"
+        label = "Высокий риск"
+        guidance = "Потенциальная потеря заметна относительно размера позиции. Проверьте размер сделки и стресс-сценарии."
+
+    return {
+        "severity": severity,
+        "label": label,
+        "loss_share_pct": share_pct,
+        "summary": guidance,
+    }
+
+
+def resolve_tinkoff_figi(figi: Optional[str], instrument_query: Optional[str], token: str) -> str:
+    if figi:
+        return figi
+
+    query = (instrument_query or "").strip()
+    if not query:
+        raise ValueError("Enter a ticker or choose an instrument from search results.")
+
+    results = find_instruments(query, token)
+    if not results:
+        raise ValueError("Instrument was not found in Tinkoff search. Try another ticker or use Manual mode.")
+
+    query_upper = query.upper()
+    exact_ticker_matches = [
+        item for item in results
+        if str(item.get("ticker", "")).upper() == query_upper and item.get("figi")
+    ]
+    if len(exact_ticker_matches) == 1:
+        return str(exact_ticker_matches[0]["figi"])
+
+    exact_name_matches = [
+        item for item in results
+        if str(item.get("name", "")).strip().upper() == query_upper and item.get("figi")
+    ]
+    if len(exact_name_matches) == 1:
+        return str(exact_name_matches[0]["figi"])
+
+    valid_results = [item for item in results if item.get("figi")]
+    if len(valid_results) == 1:
+        return str(valid_results[0]["figi"])
+
+    raise ValueError("Several instruments match the query. Please click one item in the search results list.")
+
 class CalculationRequest(BaseModel):
     mode: str
     figi: Optional[str] = None
+    instrument_query: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     manual_prices: Optional[str] = None
@@ -138,7 +201,7 @@ class OptionVaRRequest(BaseModel):
     sigma_horizon: float
     z_value: float
     simulations: int = 50000
-    seed: int = 42
+    seed: Optional[int] = None
     confidence: float = 0.95
     full_revaluation: bool = False
     horizon_days: int = 1
@@ -178,8 +241,11 @@ async def read_root(request: Request):
 @app.get("/api/search")
 async def search_instrument(query: str):
     token = os.getenv("TINKOFF_TOKEN")
-    if not token:
-        return [{"name": "Tinkoff Token Missing (Use Manual Mode)", "ticker": "ERROR", "figi": "", "type": "error"}]
+    if not has_real_tinkoff_token(token):
+        raise HTTPException(
+            status_code=400,
+            detail="TINKOFF_TOKEN is not set. Add a real token or use Manual / Random mode."
+        )
         
     results = find_instruments(query, token)
     return results
@@ -192,22 +258,21 @@ async def calculate_risk(request: CalculationRequest):
     try:
         if request.mode == 'tinkoff':
             token = os.getenv("TINKOFF_TOKEN")
-            if not token:
-                return {"error": "TINKOFF_TOKEN is not set. Please use Manual or Random mode."}
+            if not has_real_tinkoff_token(token):
+                raise ValueError("TINKOFF_TOKEN is not set. Please use Manual or Random mode.")
             
-            if not request.figi:
-                return {"error": "FIGI is required for Tinkoff mode."}
+            resolved_figi = resolve_tinkoff_figi(request.figi, request.instrument_query, token)
                 
-            candles = get_candles(request.figi, request.start_date, request.end_date, token)
+            candles = get_candles(resolved_figi, request.start_date, request.end_date, token)
             if not candles or len(candles) < 2:
-                return {"error": "Not enough data from Tinkoff API (need at least 2 days)."}
+                raise ValueError("Not enough data from Tinkoff API (need at least 2 days).")
             
             prices = [c['close'] for c in candles]
             candles_data = candles
 
         elif request.mode == 'manual':
             if not request.manual_prices:
-                return {"error": "Please enter prices for Manual mode."}
+                raise ValueError("Please enter prices for Manual mode.")
             prices = parse_price_input(request.manual_prices)
             start_dt = datetime.now() - timedelta(days=len(prices))
             for i, p in enumerate(prices):
@@ -231,10 +296,10 @@ async def calculate_risk(request: CalculationRequest):
                 })
         
         else:
-            return {"error": "Invalid mode selected."}
+            raise ValueError("Invalid mode selected.")
 
         if len(prices) < 2:
-             return {"error": "Not enough price data (need at least 2 prices)."}
+             raise ValueError("Not enough price data (need at least 2 prices).")
 
         pnl = pnl_from_prices(prices, position_size=request.position_size)
 
@@ -274,8 +339,10 @@ async def calculate_risk(request: CalculationRequest):
                 "liquidation_days": request.liquidation_days
             }
 
-        exceptions = [p < -p_var.get("var_loss", 0) for p in pnl]
-        kupiec_result = kupiec_pof_test(exceptions, 1.0 - request.confidence)
+        risk_status = build_risk_status(
+            var_loss=float(p_var.get("var_loss", 0.0)),
+            position_value=position_value,
+        )
 
         return {
             "prices": prices,
@@ -287,17 +354,21 @@ async def calculate_risk(request: CalculationRequest):
             "es": es,
             "parametric_var": p_var,
             "lvar": lvar_metrics,
-            "backtest": kupiec_result,
+            "risk_status": risk_status,
             "pnl_series": pnl
         }
 
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/calculate_portfolio")
 async def calculate_portfolio(request: PortfolioRequest):
+    total_input_weight = sum(item.weight for item in request.items)
+    if total_input_weight <= 0:
+        raise HTTPException(status_code=400, detail="Portfolio weights must sum to a positive value.")
+
     token = os.getenv("TINKOFF_TOKEN")
-    if not token:
+    if not has_real_tinkoff_token(token):
         raise HTTPException(status_code=400, detail="TINKOFF_TOKEN is required for portfolio calculation.")
 
     try:
@@ -329,9 +400,12 @@ async def calculate_portfolio(request: PortfolioRequest):
 
         returns_matrix = full_df.values
         weights_array = np.array(weights_list)
+        total_weight = weights_array.sum()
+        if total_weight <= 0:
+            raise HTTPException(status_code=400, detail="Portfolio weights must sum to a positive value.")
         
-        if abs(weights_array.sum() - 1.0) > 0.01:
-             weights_array = weights_array / weights_array.sum()
+        if abs(total_weight - 1.0) > 0.01:
+             weights_array = weights_array / total_weight
 
         portfolio_metrics = calculate_portfolio_var(
             returns_matrix, 
@@ -356,6 +430,8 @@ async def calculate_portfolio(request: PortfolioRequest):
             "efficient_frontier": frontier_data
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -486,6 +562,8 @@ async def get_option_pricing(request: OptionPricingRequest):
 @app.post("/api/option_var")
 async def get_option_var(request: OptionVaRRequest):
     try:
+        seed_used = request.seed if request.seed is not None else random.SystemRandom().randrange(1, 2**32)
+
         # 1. Analytical Approximations
         approximations = option_var_moment_approximations(
             delta_cash=request.delta_cash,
@@ -504,7 +582,7 @@ async def get_option_var(request: OptionVaRRequest):
             mu_horizon=request.mu_horizon,
             sigma_horizon=request.sigma_horizon,
             simulations=request.simulations,
-            seed=request.seed,
+            seed=seed_used,
         )
         
         mc_var = historical_var_discrete(pnl_dg_mc, request.confidence)
@@ -518,7 +596,7 @@ async def get_option_var(request: OptionVaRRequest):
                 mu_horizon=request.mu_horizon,
                 sigma_horizon=request.sigma_horizon,
                 simulations=request.simulations,
-                seed=request.seed,
+                seed=seed_used,
                 vol_mean_horizon=request.vol_mean_horizon,
                 vol_sigma_horizon=request.vol_sigma_horizon,
                 rate_mean_horizon=request.rate_mean_horizon,
@@ -541,6 +619,8 @@ async def get_option_var(request: OptionVaRRequest):
             "mc_es": mc_es["es_loss"],
             "mc_var_details": mc_var,
             "mc_es_details": mc_es,
+            "seed_used": seed_used,
+            "seed_mode": "fixed" if request.seed is not None else "random",
             "full_revaluation": full_revaluation,
         }
     except ValueError as e:

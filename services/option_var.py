@@ -135,13 +135,13 @@ def simulate_delta_gamma_pnl(
     mu_horizon: float,
     sigma_horizon: float,
     simulations: int,
-    seed: int,
+    seed: int | None,
 ) -> List[float]:
     """
     Simulates Delta-Gamma PnL using Monte Carlo.
     Assumes dS is normally distributed.
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     # Simulate percentage returns for the underlying asset
     # dS_percent = mu_horizon + sigma_horizon * Z, where Z is standard normal
     # PnL = delta_cash * S_0 * dS_percent + 0.5 * gamma_cash * S_0^2 * dS_percent^2 + theta_horizon
@@ -149,7 +149,7 @@ def simulate_delta_gamma_pnl(
     # Let's assume dS is normally distributed with mean mu_horizon and std sigma_horizon
     
     # Simulate changes in underlying asset price (dS)
-    dS_sims = np.random.normal(loc=mu_horizon, scale=sigma_horizon, size=simulations)
+    dS_sims = rng.normal(loc=mu_horizon, scale=sigma_horizon, size=simulations)
     
     # Calculate PnL for each simulation
     pnl_sims = delta_cash * dS_sims + 0.5 * gamma_cash * dS_sims**2 + theta_horizon
@@ -163,16 +163,16 @@ def simulate_delta_gamma_pnl_multifactor(
     mean_vector: List[float],
     covariance_matrix: List[List[float]],
     simulations: int,
-    seed: int,
+    seed: int | None,
 ) -> List[float]:
     """
     Simulates multifactor Delta-Gamma PnL using Monte Carlo.
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     n = len(delta_cash_values)
     
     # Simulate changes in underlying asset prices (dS_i) using multivariate normal distribution
-    dS_sims = np.random.multivariate_normal(mean=mean_vector, cov=covariance_matrix, size=simulations)
+    dS_sims = rng.multivariate_normal(mean=mean_vector, cov=covariance_matrix, size=simulations)
     
     pnl_sims = np.zeros(simulations)
     for i in range(n):
@@ -191,7 +191,7 @@ def simulate_full_revaluation_pnl(
     mu_horizon: float,
     sigma_horizon: float,
     simulations: int,
-    seed: int,
+    seed: int | None,
     vol_mean_horizon: float,
     vol_sigma_horizon: float,
     rate_mean_horizon: float,
@@ -200,18 +200,18 @@ def simulate_full_revaluation_pnl(
     """
     Simulates Full Revaluation PnL for a single-factor model using Monte Carlo.
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     horizon_years = horizon_days / 365.0
     
     pnl_sims = np.zeros(simulations)
     
     for _ in range(simulations):
         # Simulate underlying asset return
-        return_shock = np.random.normal(loc=mu_horizon, scale=sigma_horizon)
+        return_shock = rng.normal(loc=mu_horizon, scale=sigma_horizon)
         
         # Simulate vol and rate shocks
-        vol_shock = np.random.normal(loc=vol_mean_horizon, scale=vol_sigma_horizon)
-        rate_shock = np.random.normal(loc=rate_mean_horizon, scale=rate_sigma_horizon)
+        vol_shock = rng.normal(loc=vol_mean_horizon, scale=vol_sigma_horizon)
+        rate_shock = rng.normal(loc=rate_mean_horizon, scale=rate_sigma_horizon)
         
         portfolio_pnl = 0.0
         for position in positions:
@@ -271,7 +271,7 @@ def simulate_full_revaluation_pnl_multifactor(
     mean_vector: List[float],
     covariance_matrix: List[List[float]],
     simulations: int,
-    seed: int,
+    seed: int | None,
     vol_mean_horizon: float,
     vol_sigma_horizon: float,
     rate_mean_horizon: float,
@@ -280,7 +280,7 @@ def simulate_full_revaluation_pnl_multifactor(
     """
     Simulates Full Revaluation PnL for a multifactor model using Monte Carlo.
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     horizon_years = horizon_days / 365.0
     n_factors = len(underlying_order)
     
@@ -288,11 +288,11 @@ def simulate_full_revaluation_pnl_multifactor(
     
     for sim_idx in range(simulations):
         # Simulate underlying asset returns using multivariate normal distribution
-        return_shocks = np.random.multivariate_normal(mean=mean_vector, cov=covariance_matrix)
+        return_shocks = rng.multivariate_normal(mean=mean_vector, cov=covariance_matrix)
         
         # Simulate vol and rate shocks
-        vol_shock = np.random.normal(loc=vol_mean_horizon, scale=vol_sigma_horizon)
-        rate_shock = np.random.normal(loc=rate_mean_horizon, scale=rate_sigma_horizon)
+        vol_shock = rng.normal(loc=vol_mean_horizon, scale=vol_sigma_horizon)
+        rate_shock = rng.normal(loc=rate_mean_horizon, scale=rate_sigma_horizon)
         
         portfolio_pnl = 0.0
         for position in positions:

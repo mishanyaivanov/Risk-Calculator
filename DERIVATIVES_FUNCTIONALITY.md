@@ -1,71 +1,61 @@
-# Risk Analytics Platform: Architecture and Mathematical Engine Guide
+# Risk Analytics Platform
 
 ## 1. Purpose
 
-This project is a local web-based risk calculator built on top of FastAPI, Jinja templates, and a Python quantitative engine.
+This project is a local web-based risk calculator built with:
 
-It contains two groups of functionality:
+- FastAPI backend
+- Jinja single-page frontend
+- Python mathematical engine
+- Tinkoff and MOEX market-data adapters
+- Docker-based local runtime
 
-- Legacy functionality:
-  - `1 Asset`
-  - `Portfolio`
-- New functionality:
-  - `MOEX Market`
-  - `Options`
-  - `Futures & SPFI`
-  - `Option Risk`
-  - `Model Check`
-  - `Factor Breakdown`
-  - `Stress Scenarios`
+The application combines legacy portfolio-risk functionality with new derivative workflows.
 
-The goal of the system is to provide a single local interface for:
+It is designed for:
 
-- market data loading,
-- basic VaR / ES analytics,
-- portfolio risk,
-- option pricing and Greeks,
-- option VaR,
-- linear derivative pricing and risk,
-- backtesting,
-- risk attribution,
-- stress testing.
+- single-asset risk estimation
+- portfolio risk estimation
+- option pricing and Greeks
+- option VaR and Monte Carlo simulation
+- futures / forward / SPFI pricing
+- linear derivative VaR / ES
+- model backtesting
+- factor risk attribution
+- deterministic stress testing
 
-## 2. High-Level Architecture
+## 2. Runtime Architecture
 
-The application is split into four logical layers.
+The application has four layers.
 
 ### 2.1 Frontend Layer
 
-File:
+Primary file:
 
 - `templates/index.html`
 
 Responsibilities:
 
-- renders all tabs in one page,
-- collects user inputs,
-- calls backend endpoints,
-- formats results into cards, tables, and charts,
-- supports workflow shortcuts from MOEX data into derivative forms.
-
-Important note:
-
-- legacy tabs `1 Asset` and `Portfolio` are preserved,
-- new UX work is concentrated in the derivative and model-validation tabs.
+- render the whole workspace in one page
+- switch between `Novice` and `Pro` modes
+- collect form inputs
+- call backend endpoints
+- show cards, tables, charts, and inline errors
+- hide raw JSON in novice mode
 
 ### 2.2 API Layer
 
-File:
+Primary file:
 
 - `main.py`
 
 Responsibilities:
 
-- defines request models with Pydantic,
-- exposes FastAPI endpoints,
-- converts frontend requests into service-layer calls,
-- returns JSON results to the UI,
-- serves the main HTML page.
+- define request schemas
+- validate incoming data
+- call service-layer functions
+- normalize API responses for the UI
+- serve the main HTML page
 
 ### 2.3 Data Adapter Layer
 
@@ -76,11 +66,13 @@ Files:
 
 Responsibilities:
 
-- fetch instruments and candles from Tinkoff,
-- fetch instruments, option board data, and candles from MOEX,
-- normalize external data into project-friendly dictionaries.
+- fetch instruments and candles from external providers
+- convert external responses into project-friendly dictionaries
+- feed pricing and risk tabs with market data
 
-These modules are parsers/adapters, not pricing engines.
+Important note:
+
+- these modules are data adapters, not pricing engines
 
 ### 2.4 Mathematical Engine Layer
 
@@ -98,343 +90,483 @@ Files:
 
 Responsibilities:
 
-- transform prices into PnL,
-- compute VaR / ES,
-- compute portfolio covariance risk,
-- price options and compute Greeks,
-- simulate option PnL,
-- price futures / forwards / SPFI contracts,
-- compute linear derivative risk,
-- validate VaR / ES models,
-- break portfolio VaR into factor contributions,
-- run deterministic stress scenarios.
+- transform prices into PnL
+- compute VaR / ES / LVaR
+- compute portfolio covariance risk
+- price derivatives
+- simulate nonlinear PnL
+- decompose risk by factor
+- validate models on history
+- reprice portfolios under stress scenarios
 
-## 3. Runtime Flow
+## 3. UI Modes
 
-Typical runtime flow is:
+The interface supports two experience modes.
 
-1. The user opens the web page at `http://127.0.0.1:8000`.
-2. The frontend collects user inputs.
-3. The frontend calls an API endpoint in `main.py`.
-4. `main.py` validates the request and forwards it to the proper service module.
-5. The service module computes the result.
-6. The API returns JSON.
-7. The frontend renders formatted output.
+### 3.1 Novice Mode
 
-For MOEX-assisted workflows the flow becomes:
+Visible tabs:
 
-1. Load instruments or option board from MOEX.
-2. Select a row in the result table.
-3. Push row data into `Options`, `Option Risk`, or `Futures & SPFI`.
-4. Run pricing or risk calculations.
+- `One Asset`
+- `Portfolio`
+- `MOEX`
+- `Stress Scenarios`
 
-## 4. API Endpoints
+Design goals:
 
-### 4.1 Legacy Endpoints
+- no raw JSON in the main path
+- plain-language metric labels
+- preset-based inputs
+- inline validation and clear next-step messages
+- inline field explanations directly in the UI
+
+### 3.2 Pro Mode
+
+Visible tabs:
+
+- all novice tabs
+- `Options`
+- `Futures & SPFI`
+- `Option Risk`
+- `Model Check`
+- `Factor Breakdown`
+
+Design goals:
+
+- full analytical coverage
+- advanced controls
+- optional raw details through collapsible sections
+- structured builders instead of raw JSON where the workflow can be simplified
+
+## 4. Role of MOEX API
+
+MOEX is used as a live market-data source for the new derivative workflows.
+
+It is **not** used as the pricing engine.
+
+What MOEX provides in this project:
+
+- market instrument lists
+- option board rows
+- historical candles by `SECID`
+- auto-filled spot values
+- auto-filled historical `mu` and `sigma`
+- workflow shortcuts from market data into derivative forms
+
+What MOEX does not provide here:
+
+- Greeks
+- VaR
+- ES
+- pricing logic
+- stress logic
+
+Those calculations are performed locally in the Python mathematical engine.
+
+## 5. Full Feature Map
+
+### 5.1 Legacy Functionality
+
+- `One Asset`
+- `Portfolio`
+
+### 5.2 New Functionality
+
+- `MOEX`
+- `Options`
+- `Futures & SPFI`
+- `Option Risk`
+- `Model Check`
+- `Factor Breakdown`
+- `Stress Scenarios`
+
+### 5.3 Migration Status from `New functions`
+
+The temporary directory `New functions` was used as a teammate reference source.
+
+Integrated into runtime:
+
+- `New functions/backtesting.py` -> `services/backtesting.py`
+- `New functions/risk_attribution.py` -> `services/risk_attribution.py`
+- `New functions/stress_testing.py` -> `services/stress_testing.py`
+
+Added on top of that integrated layer:
+
+- `services/option_pricing.py`
+- `services/option_var.py`
+- `services/forward_pricing.py`
+- `services/linear_risk.py`
+- `services/moex_service.py`
+
+Reference-only files that remain outside runtime:
+
+- `New functions/main.py`
+- `New functions/README.md`
+- `New functions/test_riskcalc_extensions.py`
+- `New functions/__init__.py`
+
+## 6. API Endpoints
+
+### 6.1 Core Endpoints
 
 - `GET /`
-  - returns the main page.
+  - serves the UI
 - `GET /api/search`
-  - Tinkoff instrument lookup.
+  - Tinkoff instrument search
 - `POST /api/calculate`
-  - single-asset VaR / ES / LVaR workflow.
+  - single-asset VaR / ES / LVaR
 - `POST /api/calculate_portfolio`
-  - portfolio VaR and efficient frontier workflow.
+  - portfolio VaR and efficient frontier
 
-### 4.2 New Endpoints
+### 6.2 Derivative and Validation Endpoints
 
-- `POST /api/backtest`
-  - rolling VaR / ES backtesting and diagnostics.
-- `POST /api/risk_attribution`
-  - factor-based Delta-Normal VaR contributions.
-- `POST /api/stress_test`
-  - deterministic full revaluation stress scenarios for option portfolios.
 - `GET /api/moex/instruments`
-  - MOEX market instrument list.
+  - MOEX instrument list
 - `GET /api/moex/option_board/{underlying_asset_code}`
-  - MOEX option board for an underlying.
+  - MOEX option board
 - `POST /api/moex/candles`
-  - MOEX candles for a selected `SECID`.
+  - MOEX candles
 - `POST /api/option_pricing`
-  - Black-Scholes price and Greeks.
+  - Black-Scholes price and Greeks
 - `POST /api/option_var`
-  - analytical and Monte Carlo option VaR.
+  - analytical option VaR and Monte Carlo
 - `POST /api/forward_pricing`
-  - pricing for futures / forwards / SPFI.
+  - futures / forward / SPFI pricing
 - `POST /api/linear_var`
-  - parametric / historical / scenario risk for linear derivatives.
+  - linear derivative VaR / ES / scenario PnL
+- `POST /api/backtest`
+  - rolling backtest and diagnostics
+- `POST /api/risk_attribution`
+  - factor VaR attribution
+- `POST /api/stress_test`
+  - full-revaluation stress scenarios
 
-## 5. Legacy Mathematical Functionality
+## 7. Frontend Contract Sheet
 
-### 5.1 `services/risk_calculator.py`
+This section documents the most important API-to-UI contracts.
+
+### 7.1 `POST /api/calculate`
+
+Purpose:
+
+- single-asset risk calculation
+
+Important response fields:
+
+- `historical_var`
+- `es`
+- `parametric_var`
+- `lvar`
+- `risk_status`
+- `candles`
+- `pnl_series`
+
+Important UX rule:
+
+- the single-asset screen no longer shows pseudo-backtest output
+- it shows `risk_status` instead
+
+`risk_status` contract:
+
+- `severity`: `green | yellow | red`
+- `label`: plain-language risk label
+- `loss_share_pct`: VaR as percent of position value
+- `summary`: short guidance text
+
+### 7.2 `POST /api/calculate_portfolio`
+
+Purpose:
+
+- portfolio risk and efficient frontier
+
+Important response fields:
+
+- `portfolio_metrics`
+- `correlation_matrix`
+- `dates`
+- `assets_cumulative_returns`
+- `portfolio_cumulative_return`
+- `efficient_frontier`
+
+Validation rules:
+
+- portfolio weights must sum to a positive value
+- live Tinkoff data requires `TINKOFF_TOKEN`
+
+### 7.3 `POST /api/option_var`
+
+Purpose:
+
+- option risk analytics
+
+Important response fields:
+
+- `approximations`
+- `pnl_dg_mc`
+- `mc_var`
+- `mc_es`
+- `seed_used`
+- `seed_mode`
+- `full_revaluation`
+
+Monte Carlo contract:
+
+- `seed` in the request is optional
+- if `seed` is omitted, the backend uses a random seed
+- if `seed` is provided, the result is reproducible
+
+UI behavior:
+
+- novice users do not see this tab
+- pro users can choose random or fixed-seed mode
+
+### 7.4 Error Handling Contract
+
+UI rule for all tabs:
+
+- every request checks `res.ok`
+- errors are taken from `detail` first, then `error`
+- errors are shown inline inside the current tab
+- stale success output is not treated as a valid new result
+
+## 8. Mathematical Engine: Legacy Functions
+
+## 8.1 `services/risk_calculator.py`
 
 This is the original single-asset risk core.
 
 Functions:
 
 - `parse_price_input(raw_input)`
-  - parses manual price strings into a list of floats.
+  - parse manual text input into numeric prices
 - `generate_random_prices(days, start_price, volatility)`
-  - creates a simulated price path for demo/testing.
+  - generate a demo price path
 - `normalize_confidence(value)`
-  - converts confidence input into a supported decimal confidence.
+  - normalize confidence from decimal or percent form
 - `z_value_for_confidence(confidence)`
-  - returns the one-tailed normal quantile used in parametric VaR.
+  - compute the normal quantile for any valid confidence in `(0, 1)`
 - `pnl_from_prices(prices, position_size)`
-  - converts a price series into a monetary PnL series using simple price differences.
+  - convert price history into PnL series
 - `historical_var_discrete(pnl, confidence)`
-  - discrete historical VaR from the left tail of the PnL distribution.
+  - historical discrete VaR
 - `expected_shortfall_discrete(pnl, confidence)`
-  - average loss in the tail beyond the VaR cutoff.
+  - historical ES
 - `parametric_var(pnl, confidence)`
-  - normal VaR using sample mean and standard deviation of PnL.
+  - normal VaR using sample mean and volatility
 - `normal_liquidation_cost(mid_market_value, spread_percent)`
-  - half-spread liquidation cost.
+  - basic liquidation cost
 - `stressed_liquidation_cost(mid_market_value, spread_percent, confidence, sigma_spread_percent)`
-  - stressed spread liquidation cost with a confidence-based spread shock.
+  - stressed liquidation cost
 - `linear_unwind_adjustment_factor(days)`
-  - liquidation-horizon adjustment factor.
+  - multi-day unwind factor
 - `linear_unwind_adjusted_var(base_var, days)`
-  - VaR adjusted for linear unwind across multiple days.
+  - LVaR-style unwind adjustment
 
-Core formulas:
+Main formulas:
 
-- `PnL_t = position_size * (P_t - P_{t-1})`
+- `PnL_t = position_size * (P_t - P_(t-1))`
 - `VaR = max(0, -q_alpha(PnL))`
-- `ES = max(0, -mean(tail PnL))`
-- `Parametric q_alpha = mu - z * sigma`
+- `ES = max(0, -average(tail PnL))`
+- `q_alpha = mu - z * sigma`
 
-### 5.2 `services/portfolio_manager.py`
+## 8.2 `services/portfolio_manager.py`
 
-This is the original portfolio risk block.
+This is the original portfolio-risk block.
 
 Functions:
 
 - `calculate_portfolio_var(returns, weights, confidence, portfolio_value)`
-  - variance-covariance portfolio VaR using the covariance matrix of returns.
+  - covariance-based portfolio VaR
 - `generate_efficient_frontier(returns, num_portfolios)`
-  - random portfolio generator for return/volatility visualization.
+  - random portfolio cloud for return-risk visualization
 
-Core formulas:
+Main formulas:
 
 - `sigma_p^2 = w^T Sigma w`
 - `VaR = portfolio_value * z * sigma_p`
 
-## 6. New Mathematical Functionality
+## 9. Mathematical Engine: New Functions
 
-### 6.1 `services/option_pricing.py`
+## 9.1 `services/option_pricing.py`
 
-This module provides the option pricing core.
+Purpose:
+
+- price a European option and compute Greeks
 
 Functions:
 
 - `normalize_option_type(option_type)`
-  - accepts `call/c` and `put/p`.
 - `option_intrinsic_value(option_type, spot, strike)`
-  - payoff at maturity.
 - `black_scholes_price_and_greeks(option_type, spot, strike, maturity_years, rate, volatility, dividend_yield)`
-  - Black-Scholes-Merton pricing and Greeks for European options.
 
 Main formulas:
 
 - `d1 = [ln(S/K) + (r - q + 0.5*sigma^2)T] / (sigma*sqrt(T))`
 - `d2 = d1 - sigma*sqrt(T)`
-- Call:
-  - `C = S*e^(-qT)N(d1) - K*e^(-rT)N(d2)`
-- Put:
-  - `P = K*e^(-rT)N(-d2) - S*e^(-qT)N(-d1)`
+- `Call = S*exp(-qT)*N(d1) - K*exp(-rT)*N(d2)`
+- `Put = K*exp(-rT)*N(-d2) - S*exp(-qT)*N(-d1)`
 
 Returned metrics:
 
-- price,
-- delta,
-- gamma,
-- vega,
-- theta,
-- rho,
-- `d1`,
-- `d2`.
+- price
+- delta
+- gamma
+- vega
+- theta
+- rho
+- `d1`
+- `d2`
 
-### 6.2 `services/option_var.py`
+## 9.2 `services/option_var.py`
 
-This module provides analytical and simulation-based option risk.
+Purpose:
+
+- estimate option VaR by approximation and simulation
 
 Functions:
 
 - `covariance_from_sigmas_and_correlation(sigma_values, correlation_matrix)`
-  - builds a covariance matrix from volatilities and correlations.
 - `option_var_moment_approximations(delta_cash, gamma_cash, theta_horizon, mu_horizon, sigma_horizon, z_value)`
-  - single-factor Delta-Normal and Delta-Gamma approximations.
 - `option_var_moment_approximations_multifactor(...)`
-  - multifactor Delta-Normal and simplified Delta-Gamma approximations.
 - `simulate_delta_gamma_pnl(delta_cash, gamma_cash, theta_horizon, mu_horizon, sigma_horizon, simulations, seed)`
-  - Monte Carlo PnL for the single-factor Delta-Gamma approximation.
 - `simulate_delta_gamma_pnl_multifactor(...)`
-  - Monte Carlo PnL for multifactor Delta-Gamma.
 - `simulate_full_revaluation_pnl(...)`
-  - full repricing Monte Carlo for a single-factor option portfolio.
 - `simulate_full_revaluation_pnl_multifactor(...)`
-  - full repricing Monte Carlo for a multifactor option portfolio.
 
-Risk logic:
+Single-factor approximation logic:
 
-- Delta-Normal approximates:
-  - `PnL ≈ Delta_cash * dS + Theta`
-- Delta-Gamma approximates:
-  - `PnL ≈ Delta_cash * dS + 0.5 * Gamma_cash * dS^2 + Theta`
-- Full Revaluation reprices the option after simulated shocks to:
-  - spot,
-  - implied volatility,
-  - rate,
-  - time-to-maturity.
+- `PnL ~= Delta_cash * dS + Theta`
+- `PnL ~= Delta_cash * dS + 0.5 * Gamma_cash * dS^2 + Theta`
 
-Outputs used by the API:
+Simulation logic:
 
-- analytical VaR approximations,
-- Monte Carlo PnL distribution,
-- Monte Carlo VaR,
-- Monte Carlo ES,
-- optional full revaluation VaR / ES.
+- Delta-Gamma Monte Carlo simulates spot shocks and applies the Delta-Gamma approximation
+- Full Revaluation Monte Carlo simulates shocks and reprices the option with the pricing engine
 
-### 6.3 `services/forward_pricing.py`
+Current runtime behavior:
 
-This module prices linear derivatives.
+- Monte Carlo is random by default
+- fixed seed is optional
+- backend returns `seed_used`
 
-Supported types:
+## 9.3 `services/forward_pricing.py`
 
-- `futures`
-- `forward`
-- `spfi`
+Purpose:
+
+- price linear derivatives such as futures, forwards, and SPFI-style contracts
 
 Functions:
 
 - `normalize_linear_derivative_type(instrument_type)`
-  - normalizes derivative type.
 - `theoretical_forward_price(spot, maturity_years, rate, income_yield)`
-  - carry-model fair price.
 - `price_linear_derivative(instrument_type, spot, maturity_years, rate, income_yield, entry_price, quantity, multiplier, scenario_spot)`
-  - fair price, carry, current value, PV, and scenario revaluation.
 
-Core formulas:
+Main formulas:
 
-- `F = S * exp((r - q) * T)`
+- `F = S * exp((r - q)T)`
 - `discount_factor = exp(-rT)`
 - `PnL_vs_entry = (F_current - F_entry) * quantity * multiplier`
 
-This is the new pricing core for `Futures & SPFI`.
+## 9.4 `services/linear_risk.py`
 
-### 6.4 `services/linear_risk.py`
+Purpose:
 
-This module provides VaR / ES for linear derivatives.
+- compute linear derivative VaR / ES and scenario PnL
 
 Functions:
 
 - `returns_from_prices(prices)`
-  - converts historical prices into arithmetic returns.
 - `rolling_horizon_pnl(single_day_pnl, horizon_days)`
-  - aggregates daily PnL across a multi-day horizon.
 - `linear_derivative_var(spot, quantity, multiplier, confidence, horizon_days, mu_daily, sigma_daily, historical_prices, scenario_move_pct, instrument_type)`
-  - master function for linear derivative risk.
 
 Capabilities:
 
-- parametric VaR / ES from `mu_daily` and `sigma_daily`,
-- historical VaR / ES from MOEX candle history,
-- scenario PnL from a user-defined percentage move.
+- parametric VaR / ES
+- historical VaR / ES
+- scenario PnL
 
-Core logic:
+Main logic:
 
-- cash exposure:
-  - `exposure_cash = spot * quantity * multiplier`
-- parametric horizon scaling:
-  - `mu_horizon = mu_daily * horizon_days`
-  - `sigma_horizon = sigma_daily * sqrt(horizon_days)`
-- parametric PnL:
-  - `PnL_mu = exposure_cash * mu_horizon`
-  - `PnL_sigma = |exposure_cash| * sigma_horizon`
+- `exposure_cash = spot * quantity * multiplier`
+- `mu_horizon = mu_daily * horizon_days`
+- `sigma_horizon = sigma_daily * sqrt(horizon_days)`
+- `PnL_mu = exposure_cash * mu_horizon`
+- `PnL_sigma = |exposure_cash| * sigma_horizon`
 
-This is the new risk core for `Futures & SPFI`.
+## 9.5 `services/backtesting.py`
 
-### 6.5 `services/backtesting.py`
+Purpose:
 
-This module validates VaR / ES models on rolling windows.
+- validate VaR / ES models on rolling history
 
 Functions:
 
 - `_safe_log_probability(probability)`
-  - clipping helper for likelihood calculations.
 - `_chi2_sf_df1(statistic)`
-  - chi-square survival function for 1 degree of freedom.
 - `_chi2_sf_df2(statistic)`
-  - chi-square survival function for 2 degrees of freedom.
 - `rolling_historical_var_es(pnl, confidence, window)`
-  - rolling historical VaR / ES backtest series.
 - `kupiec_pof_test(exceptions, alpha)`
-  - proportion-of-failures test.
 - `christoffersen_independence_test(exceptions)`
-  - independence test for exception clustering.
 - `christoffersen_conditional_coverage_test(exceptions, alpha)`
-  - combined coverage test.
 - `es_realized_shortfall_diagnostics(realized_pnl, var_pnl_thresholds, es_losses)`
-  - compares realized tail losses with predicted ES.
 
 Outputs:
 
-- rolling realized PnL,
-- rolling VaR / ES thresholds,
-- exception sequence,
-- red/yellow/green test verdicts,
-- ES tail-bias diagnostics.
+- rolling realized PnL
+- rolling VaR thresholds
+- exception sequence
+- `green / yellow / red` verdicts
+- ES tail diagnostics
 
-### 6.6 `services/risk_attribution.py`
+## 9.6 `services/risk_attribution.py`
 
-This module decomposes Delta-Normal portfolio VaR into factor contributions.
+Purpose:
+
+- decompose Delta-Normal portfolio VaR by factor
 
 Functions:
 
 - `_portfolio_sigma(exposures, covariance_matrix)`
-  - portfolio volatility from exposures and covariance.
 - `delta_normal_var_contributions(factor_names, delta_cash_values, mu_horizon_values, covariance_horizon, z_value)`
-  - marginal and component VaR by factor.
 
 Outputs:
 
-- portfolio mean,
-- portfolio sigma,
-- portfolio VaR,
-- marginal VaR by factor,
-- component VaR by factor,
-- percentage contribution share.
+- portfolio mean
+- portfolio sigma
+- portfolio VaR
+- marginal VaR by factor
+- component VaR by factor
+- component share by factor
 
-### 6.7 `services/stress_testing.py`
+## 9.7 `services/stress_testing.py`
 
-This module provides deterministic stress testing for option portfolios.
+Purpose:
+
+- full-revaluation stress testing for option portfolios
 
 Functions:
 
 - `evaluate_full_revaluation_stress_scenario(positions, horizon_days, underlying_return_shocks, volatility_shift, rate_shift)`
-  - reprices each option position under a deterministic scenario.
 - `build_standard_stress_scenarios(underlying_ids)`
-  - returns standard built-in scenarios.
 
 Built-in scenario families:
 
-- market down 10%,
-- market down 20%,
-- crash plus volatility jump,
-- rates up,
-- rates down.
+- market down 10%
+- market down 20%
+- crash with higher volatility
+- rates up
+- rates down
 
 Outputs:
 
-- base portfolio value,
-- stressed portfolio value,
-- total PnL,
-- per-position stressed PnL.
+- base portfolio value
+- stressed portfolio value
+- total PnL
+- per-position stressed PnL
 
-## 7. Data Adapter Modules
+## 10. Data Adapter Modules
 
-### 7.1 `services/tinkoff_service.py`
+## 10.1 `services/tinkoff_service.py`
 
 Functions:
 
@@ -445,9 +577,9 @@ Functions:
 
 Purpose:
 
-- supports the legacy Tinkoff-based asset and portfolio workflows.
+- legacy instrument search and price history
 
-### 7.2 `services/moex_service.py`
+## 10.2 `services/moex_service.py`
 
 Functions:
 
@@ -460,232 +592,203 @@ Functions:
 
 Purpose:
 
-- supports the new MOEX-based derivative workflows,
-- resolves `engine/market` automatically when missing,
-- provides a bridge from MOEX selection to pricing/risk tabs.
+- live MOEX integration for the derivative flow
+- automatic board resolution for candle downloads
+- option-board loading
+- market list browsing
 
-## 8. Migration Status from `New functions`
+## 11. User Workflows
 
-The temporary directory `New functions` contains the teammate reference implementation.
+## 11.1 One Asset
 
-Runtime-integrated modules already present in the main application:
+Use when:
 
-- `New functions/backtesting.py` -> `services/backtesting.py`
-- `New functions/risk_attribution.py` -> `services/risk_attribution.py`
-- `New functions/stress_testing.py` -> `services/stress_testing.py`
+- you want a simple risk estimate for one instrument
 
-Already integrated new derivative modules built on top of that layer:
+Flow:
 
-- `services/option_pricing.py`
-- `services/option_var.py`
-- `services/forward_pricing.py`
-- `services/linear_risk.py`
-- `services/moex_service.py`
+1. Choose `API`, `Manual`, or `Random`
+2. Select a risk preset
+3. Run the calculation
+4. Read VaR, ES, LVaR, and the plain-language risk status
 
-Reference-only files that remain in `New functions` and are not part of runtime web execution:
+## 11.2 Portfolio
 
-- `New functions/main.py`
-- `New functions/README.md`
-- `New functions/test_riskcalc_extensions.py`
-- `New functions/__init__.py`
+Use when:
 
-This means the important mathematical logic has been transferred into the working web service, while the temporary folder still acts as a source/reference snapshot.
+- you want covariance-based portfolio analytics
 
-## 9. Frontend Workflows
+Flow:
 
-### 9.1 `1 Asset`
+1. Add instruments
+2. Set weights
+3. Select a date range
+4. Run portfolio risk
+5. Review VaR, efficient frontier, cumulative return, and correlation matrix
 
-Use this tab for:
+## 11.3 MOEX
 
-- Tinkoff-based single asset analysis,
-- manual price sequences,
-- random demo series,
-- Historical VaR,
-- ES,
-- Parametric VaR,
-- liquidation-aware metrics.
+Novice flow:
 
-### 9.2 `Portfolio`
+1. Select a market category
+2. Load instruments
+3. Choose one row
+4. Load candles
+5. Use auto-filled spot, `mu`, and `sigma`
 
-Use this tab for:
+Pro flow:
 
-- multi-asset portfolio construction,
-- covariance-based portfolio VaR,
-- correlation matrix,
-- efficient frontier visualization.
+1. Choose engine and market directly
+2. Load instrument list
+3. Optionally load option board
+4. Send selected rows into derivative tabs
+5. Load candles by `SECID`
 
-### 9.3 `MOEX Market`
+## 11.4 Options
 
-Use this tab for:
+Use when:
 
-- loading MOEX instrument lists,
-- browsing option boards,
-- downloading candles,
-- sending selected rows into derivative workflows.
+- you need price and Greeks for one option contract
 
-Recommended process:
+Flow:
 
-1. Load instruments or option board.
-2. Pick the relevant row.
-3. Send it to `Options`, `Option Risk`, or `Futures & SPFI`.
-4. If needed, load candles to fill spot and historical volatility inputs.
+1. Fill the contract manually or from MOEX
+2. Run pricing
+3. Review price, Greeks, and position-level values
+4. Copy the same contract into `Option Risk`
 
-### 9.4 `Options`
+## 11.5 Futures & SPFI
 
-Use this tab for:
+Use when:
 
-- Black-Scholes pricing,
-- Greeks for one option position,
-- preparing a contract for risk analysis.
+- you need pricing and linear risk for a futures / forward / SPFI position
 
-Recommended process:
+Flow:
 
-1. Fill in option inputs manually or via `MOEX Market`.
-2. Run pricing.
-3. Review price and Greeks.
-4. Send the contract to `Option Risk`.
+1. Fill spot, maturity, rate, carry, quantity, multiplier
+2. Run pricing
+3. Run linear risk
+4. Review parametric, historical, and scenario outputs
 
-### 9.5 `Option Risk`
+## 11.6 Option Risk
 
-Use this tab for:
+Use when:
 
-- Delta-Normal VaR,
-- Delta-Gamma VaR,
-- Delta-Gamma Monte Carlo,
-- Full Revaluation Monte Carlo.
+- you need analytical VaR and simulation for one option position
 
-Recommended process:
+Flow:
 
-1. Start from `Options` or direct input.
-2. Fill cash Greeks and horizon assumptions.
-3. Run the risk calculation.
-4. Compare analytical and simulation-based outputs.
-5. Turn on full revaluation when you need a more realistic nonlinear result.
+1. Fill the option contract
+2. Enter market assumptions (`mu`, `sigma`, horizon)
+3. Choose random or fixed-seed Monte Carlo
+4. Run the calculation
+5. Compare:
+   - Delta-Normal
+   - Delta-Gamma
+   - Delta-Gamma Monte Carlo
+   - Full Revaluation Monte Carlo
 
-### 9.6 `Futures & SPFI`
+## 11.7 Model Check
 
-Use this tab for:
+Use when:
 
-- linear derivative pricing,
-- fair value / carry analysis,
-- present value vs entry price,
-- scenario PnL,
-- parametric and historical risk for futures / forwards / SPFI.
+- you need rolling validation of a VaR model
 
-Recommended process:
+Flow:
 
-1. Set spot, maturity, rate, carry inputs, quantity, and multiplier.
-2. Run pricing.
-3. In the risk section, either:
-   - provide `mu_daily` and `sigma_daily`, or
-   - load historical prices from MOEX candles.
-4. Run linear risk.
-5. Review VaR, ES, and scenario PnL.
+1. Provide PnL history
+2. Select confidence and window
+3. Run backtest
+4. Review exception counts, verdicts, and ES diagnostics
 
-### 9.7 `Model Check`
+## 11.8 Factor Breakdown
 
-Use this tab for:
+Use when:
 
-- rolling validation of VaR / ES models.
+- you need to understand which factors consume portfolio VaR
 
-Recommended process:
+Flow:
 
-1. Provide a historical PnL series.
-2. Choose confidence and rolling window.
-3. Run backtest.
-4. Review:
-   - exception frequency,
-   - independence,
-   - conditional coverage,
-   - ES realized tail diagnostics.
+1. Enter factors, deltas, means, and covariance matrix
+2. Run factor breakdown
+3. Review marginal and component contributions
 
-### 9.8 `Factor Breakdown`
+## 11.9 Stress Scenarios
 
-Use this tab for:
+Novice flow:
 
-- factor-level Delta-Normal VaR decomposition.
+1. Choose a predefined scenario
+2. Enter one option position
+3. Run quick stress-check
+4. Review built-in and custom scenario outputs
 
-Recommended process:
+Pro flow:
 
-1. Prepare factor names.
-2. Provide delta cash exposures.
-3. Provide factor means and covariance matrix.
-4. Run attribution.
-5. Review marginal and component risk shares.
+1. Add one or more option positions through the structured position builder
+2. Choose a scenario template or edit shocks manually
+3. Run full stress test
+4. Review scenario table and raw details
 
-### 9.9 `Stress Scenarios`
+## 12. Local Run Instructions
 
-Use this tab for:
+## 12.1 Docker
 
-- deterministic stress testing for option portfolios.
-
-Recommended process:
-
-1. Define option positions.
-2. Define horizon and shocks.
-3. Run the stress engine.
-4. Compare built-in and custom scenarios.
-
-## 10. Local Run Instructions
-
-### 10.1 Docker
-
-Use:
+Recommended command:
 
 ```bash
 docker compose up --build
 ```
 
-Then open:
+Open:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-### 10.2 Local Python
+## 12.2 Local Python
 
-If dependencies are already installed, run:
+If dependencies are installed:
 
 ```bash
 python main.py
 ```
 
-## 11. Operational Notes
+## 12.3 Environment
 
-- Confidence levels in the original single-asset logic are normalized to supported values.
-- Option pricing assumes European Black-Scholes-Merton dynamics.
-- Full revaluation risk includes optional shocks to volatility and rates.
-- Linear derivative risk can work with either:
-  - direct statistical inputs, or
-  - historical prices.
-- MOEX is now part of the live backend flow, not a disconnected experiment.
+Optional:
 
-## 12. Current Scope and Limits
+- `TINKOFF_TOKEN`
 
-- The option engine is European-style only.
-- The Delta-Gamma analytical formulas are approximations.
-- Full revaluation Monte Carlo is more realistic, but also heavier.
-- Some multifactor functions exist in the service layer even if the current UI mainly exposes the single-factor path.
-- The temporary `New functions` directory is still present as a reference and should not be treated as the production runtime entrypoint.
+Without `TINKOFF_TOKEN`:
 
-## 13. Summary
+- Tinkoff-based search and candles are limited
+- manual mode, random mode, MOEX, and local derivative analytics still work
 
-The platform now combines:
+## 13. Deploy Notes
 
-- legacy VaR / portfolio analytics,
-- new option pricing and option VaR,
-- new futures / SPFI pricing and risk,
-- MOEX-powered derivative data flow,
-- model validation,
-- factor attribution,
-- stress testing.
+- Docker installs the T-Bank SDK from the official package registry
+- clean Docker build is expected to succeed from scratch
+- the running container exposes port `8000`
 
-The core design principle is:
+## 14. Current Limits
 
-- adapters fetch and normalize market data,
-- API endpoints coordinate requests,
-- service modules perform mathematical calculations,
-- the frontend renders a simplified workflow for end users.
+- the option engine is European-style only
+- Delta-Gamma analytics are still approximations
+- multifactor helpers exist in the service layer, but the current UI focuses on the single-factor path
+- some MOEX underlyings may legitimately return empty option boards
 
-для поднятия: docker-compose up --build
-http://0.0.0.0:8000/
+## 15. Summary
+
+The current architecture is:
+
+- adapters load market data
+- FastAPI endpoints validate requests and assemble responses
+- service modules perform the mathematical work
+- the frontend presents a simplified user flow for non-experts and a fuller workspace for advanced users
+
+This means the platform now supports both:
+
+- old risk-calculator workflows
+- new derivative and model-validation workflows
+
+inside one local Docker-ready application.

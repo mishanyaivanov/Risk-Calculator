@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Risk Analytics Platform</title>
+    <title>Риск-калькулятор портфеля</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.26.0/plotly.min.js"></script>
     <style>
@@ -124,6 +124,87 @@
         .chart-container.chart-sm {
             height: 320px;
         }
+        .mode-switch .btn {
+            min-width: 120px;
+        }
+        .mode-switch .btn.active {
+            background-color: #1f3a52;
+            border-color: #1f3a52;
+            color: #fff;
+        }
+        .workspace-note {
+            color: #6c757d;
+            font-size: 0.95rem;
+        }
+        .inline-feedback {
+            display: none;
+            margin-bottom: 1rem;
+        }
+        .inline-feedback.show {
+            display: block;
+        }
+        .simple-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.8rem;
+            border-radius: 999px;
+            padding: 0.25rem 0.65rem;
+            background: #eef5fb;
+            color: #1f3a52;
+        }
+        .mode-hidden {
+            display: none !important;
+        }
+        .field-help {
+            color: #6c757d;
+            font-size: 0.82rem;
+            line-height: 1.35;
+            margin-top: 0.35rem;
+        }
+        .theory-card {
+            background: linear-gradient(135deg, #fffdf4 0%, #f8f4e6 100%);
+            border: 1px solid #eadfb3;
+            border-radius: 0.75rem;
+            padding: 0.9rem 1rem;
+            margin-bottom: 1rem;
+        }
+        .theory-card strong {
+            display: block;
+            margin-bottom: 0.35rem;
+            color: #5d4a00;
+        }
+        .subsection-note {
+            color: #495057;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+        .guided-step {
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #1f3a52;
+            margin-bottom: 0.45rem;
+        }
+        .stress-position-card {
+            border: 1px solid #e6eef5;
+            border-radius: 0.75rem;
+            background: #fbfdff;
+        }
+        .stress-position-card .card-body {
+            padding: 1rem;
+        }
+        .helper-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: 999px;
+            padding: 0.25rem 0.65rem;
+            font-size: 0.78rem;
+            background: #eef3f8;
+            color: #274760;
+        }
     </style>
 </head>
 <body>
@@ -136,39 +217,50 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="#">Risk Analytics Platform</a>
+            <a class="navbar-brand" href="#">Риск-калькулятор портфеля</a>
         </div>
     </nav>
 
     <div class="container-fluid">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+            <div>
+                <h1 class="h3 mb-1">Risk Calculator Workspace</h1>
+                <div class="workspace-note">Новичок оставляет только быстрые сценарии. Профи открывает полный quant toolset и детали.</div>
+            </div>
+            <div class="mode-switch btn-group" role="group" aria-label="Interface mode">
+                <button type="button" class="btn btn-outline-dark active" id="noviceModeBtn">Новичок</button>
+                <button type="button" class="btn btn-outline-dark" id="proModeBtn">Профи</button>
+            </div>
+        </div>
+
         <!-- Main Navigation -->
         <ul class="nav nav-pills mb-4 bg-white p-3 rounded shadow-sm" id="mainTabs" role="tablist">
             <li class="nav-item me-2" role="presentation">
-                <button class="nav-link active" id="single-tab" data-bs-toggle="pill" data-bs-target="#single" type="button" role="tab">1 Asset</button>
+                <button class="nav-link active" id="single-tab" data-bs-toggle="pill" data-bs-target="#single" type="button" role="tab">Один актив</button>
             </li>
             <li class="nav-item me-2" role="presentation">
-                <button class="nav-link" id="portfolio-tab" data-bs-toggle="pill" data-bs-target="#portfolio" type="button" role="tab">Portfolio</button>
+                <button class="nav-link" id="portfolio-tab" data-bs-toggle="pill" data-bs-target="#portfolio" type="button" role="tab">Портфель</button>
             </li>
             <li class="nav-item me-2" role="presentation">
-                <button class="nav-link" id="moex-data-tab" data-bs-toggle="pill" data-bs-target="#moex-data" type="button" role="tab">MOEX Market</button>
+                <button class="nav-link" id="moex-data-tab" data-bs-toggle="pill" data-bs-target="#moex-data" type="button" role="tab">MOEX</button>
             </li>
-            <li class="nav-item me-2" role="presentation">
+            <li class="nav-item me-2 ui-pro-nav" role="presentation">
                 <button class="nav-link" id="option-pricing-tab" data-bs-toggle="pill" data-bs-target="#option-pricing" type="button" role="tab">Options</button>
             </li>
-            <li class="nav-item me-2" role="presentation">
+            <li class="nav-item me-2 ui-pro-nav" role="presentation">
                 <button class="nav-link" id="forward-pricing-tab" data-bs-toggle="pill" data-bs-target="#forward-pricing" type="button" role="tab">Futures & SPFI</button>
             </li>
-            <li class="nav-item me-2" role="presentation">
+            <li class="nav-item me-2 ui-pro-nav" role="presentation">
                 <button class="nav-link" id="option-var-tab" data-bs-toggle="pill" data-bs-target="#option-var" type="button" role="tab">Option Risk</button>
             </li>
-            <li class="nav-item me-2" role="presentation">
+            <li class="nav-item me-2 ui-pro-nav" role="presentation">
                 <button class="nav-link" id="backtesting-tab" data-bs-toggle="pill" data-bs-target="#backtesting" type="button" role="tab">Model Check</button>
             </li>
-            <li class="nav-item me-2" role="presentation">
+            <li class="nav-item me-2 ui-pro-nav" role="presentation">
                 <button class="nav-link" id="risk-attribution-tab" data-bs-toggle="pill" data-bs-target="#risk-attribution" type="button" role="tab">Factor Breakdown</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="stress-testing-tab" data-bs-toggle="pill" data-bs-target="#stress-testing" type="button" role="tab">Stress Scenarios</button>
+                <button class="nav-link" id="stress-testing-tab" data-bs-toggle="pill" data-bs-target="#stress-testing" type="button" role="tab">Stress-сценарии</button>
             </li>
         </ul>
 
@@ -180,20 +272,20 @@
                     <!-- Left Column: Inputs -->
                     <div class="col-lg-3">
                         <div class="card">
-                            <div class="card-header">Parameters</div>
+                            <div class="card-header">Параметры расчёта</div>
                             <div class="card-body">
                                 <ul class="nav nav-tabs mb-3" id="modeTabs" role="tablist">
                                     <li class="nav-item"><button class="nav-link active" id="tinkoff-tab" data-bs-toggle="tab" data-bs-target="#tinkoff">API</button></li>
-                                    <li class="nav-item"><button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual">Manual</button></li>
-                                    <li class="nav-item"><button class="nav-link" id="random-tab" data-bs-toggle="tab" data-bs-target="#random">Random</button></li>
+                                    <li class="nav-item"><button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual">Вручную</button></li>
+                                    <li class="nav-item"><button class="nav-link" id="random-tab" data-bs-toggle="tab" data-bs-target="#random">Случайно</button></li>
                                 </ul>
 
                                 <div class="tab-content" id="modeContent">
                                     <div class="tab-pane fade show active" id="tinkoff">
-                                        <label class="form-label small fw-bold">Instrument</label>
+                                        <label class="form-label small fw-bold">Инструмент</label>
                                         <div class="input-group mb-2">
-                                            <input type="text" class="form-control form-control-sm" id="instrumentName" placeholder="Ticker (example: SBER)">
-                                            <button class="btn btn-outline-secondary btn-sm" type="button" id="searchBtn">Search</button>
+                                            <input type="text" class="form-control form-control-sm" id="instrumentName" placeholder="Тикер, например SBER">
+                                            <button class="btn btn-outline-secondary btn-sm" type="button" id="searchBtn">Найти</button>
                                         </div>
                                         <div id="searchResults" class="list-group mb-3 small" style="max-height: 150px; overflow-y: auto;"></div>
                                         <div id="selectedInstrument" class="alert alert-success py-1 px-2 d-none small mb-2"></div>
@@ -201,11 +293,11 @@
 
                                         <div class="row g-2 mb-2">
                                             <div class="col-6">
-                                                <label class="form-label small">Start</label>
+                                                <label class="form-label small">Начало</label>
                                                 <input type="date" class="form-control form-control-sm" id="startDate">
                                             </div>
                                             <div class="col-6">
-                                                <label class="form-label small">End</label>
+                                                <label class="form-label small">Конец</label>
                                                 <input type="date" class="form-control form-control-sm" id="endDate">
                                             </div>
                                         </div>
@@ -213,53 +305,69 @@
 
                                     <div class="tab-pane fade" id="manual">
                                         <div class="mb-3">
-                                            <label class="form-label small">Prices</label>
+                                            <label class="form-label small">Ряд цен</label>
                                             <textarea class="form-control form-control-sm" id="manualPrices" rows="5"></textarea>
                                         </div>
                                     </div>
 
                                     <div class="tab-pane fade" id="random">
-                                        <p class="text-muted small">Geometric Brownian Motion simulation.</p>
+                                        <p class="text-muted small">Генерируется пример ряда цен по GBM.</p>
                                     </div>
                                 </div>
 
                                 <hr class="my-3">
 
                                 <div class="mb-2">
-                                    <label class="form-label small">Confidence Level</label>
-                                    <select class="form-select form-select-sm" id="confidence">
-                                        <option value="0.95">95%</option>
-                                        <option value="0.99">99%</option>
+                                    <label class="form-label small">Риск-профиль</label>
+                                    <select class="form-select form-select-sm" id="single-risk-preset">
+                                        <option value="base">Базово</option>
+                                        <option value="cautious">Осторожно</option>
+                                        <option value="aggressive">Агрессивно</option>
                                     </select>
                                 </div>
                                 <div class="mb-2">
-                                    <label class="form-label small">Position Size</label>
+                                    <label class="form-label small">Размер позиции</label>
                                     <input type="number" class="form-control form-control-sm" id="positionSize" value="1">
                                 </div>
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <label class="form-label small">Spread %</label>
-                                        <input type="number" class="form-control form-control-sm" id="spreadPercent" value="0.1" step="0.01">
+                                <details class="mt-3">
+                                    <summary class="soft-note">Показать детали</summary>
+                                    <div class="pt-3">
+                                        <div class="mb-2">
+                                            <label class="form-label small">Confidence Level</label>
+                                            <select class="form-select form-select-sm" id="confidence">
+                                                <option value="0.90">90%</option>
+                                                <option value="0.95">95%</option>
+                                                <option value="0.975">97.5%</option>
+                                                <option value="0.99">99%</option>
+                                            </select>
+                                        </div>
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <label class="form-label small">Spread %</label>
+                                                <input type="number" class="form-control form-control-sm" id="spreadPercent" value="0.1" step="0.01">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small">Liq. Days</label>
+                                                <input type="number" class="form-control form-control-sm" id="liquidationDays" value="1">
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-6">
-                                        <label class="form-label small">Liq. Days</label>
-                                        <input type="number" class="form-control form-control-sm" id="liquidationDays" value="1">
-                                    </div>
-                                </div>
+                                </details>
 
-                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="calculateBtn">Calculate Metrics</button>
+                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="calculateBtn">Рассчитать риск</button>
                             </div>
                         </div>
                     </div>
 
                     <!-- Right Column: Results -->
                     <div class="col-lg-9">
+                        <div class="alert alert-danger inline-feedback" id="single-feedback"></div>
                         <div id="results" class="d-none">
                             <div class="row g-3 mb-3">
                                 <div class="col-md-4">
                                     <div class="card h-100">
                                         <div class="card-body text-center">
-                                            <div class="metric-label">Value at Risk (VaR)</div>
+                                            <div class="metric-label">Потеря в плохой день (VaR)</div>
                                             <div class="metric-value text-danger" id="res-var">--</div>
                                             <div class="small text-muted mt-2">Historical: <span id="res-hvar">--</span></div>
                                         </div>
@@ -268,16 +376,16 @@
                                 <div class="col-md-4">
                                     <div class="card h-100">
                                         <div class="card-body text-center">
-                                            <div class="metric-label">Expected Shortfall (ES)</div>
+                                            <div class="metric-label">Средняя потеря в очень плохие дни (ES)</div>
                                             <div class="metric-value text-warning" id="res-es">--</div>
-                                            <div class="small text-muted mt-2">Tail Risk Measure</div>
+                                            <div class="small text-muted mt-2">Tail risk measure</div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="card h-100">
                                         <div class="card-body text-center">
-                                            <div class="metric-label">Liquidity Adjusted VaR</div>
+                                            <div class="metric-label">Потеря с учётом быстрой продажи (LVaR)</div>
                                             <div class="metric-value text-dark" id="res-lvar">--</div>
                                             <div class="small text-muted mt-2">Stressed: <span id="res-lvar-stress">--</span></div>
                                         </div>
@@ -285,10 +393,10 @@
                                 </div>
                             </div>
 
-                            <div id="backtest-body" class="mb-3"></div>
+                            <div id="single-risk-status" class="mb-3"></div>
 
                             <div class="card">
-                                <div class="card-header">Price History</div>
+                                <div class="card-header">История цены</div>
                                 <div class="card-body p-2">
                                     <div id="chartContainer" class="chart-container"></div>
                                 </div>
@@ -296,8 +404,8 @@
                         </div>
 
                         <div id="results-placeholder" class="text-center py-5 text-muted bg-white rounded border">
-                            <h5 class="mt-3">No Data Calculated</h5>
-                            <p>Select an instrument and click Calculate.</p>
+                            <h5 class="mt-3">Пока нет расчёта</h5>
+                            <p>Выберите инструмент и нажмите «Рассчитать риск».</p>
                         </div>
                     </div>
                 </div>
@@ -308,20 +416,29 @@
                 <div class="row">
                     <div class="col-lg-4">
                         <div class="card">
-                            <div class="card-header">Portfolio Composition</div>
+                            <div class="card-header">Состав портфеля</div>
                             <div class="card-body">
                                 <div class="input-group mb-3">
-                                    <input type="text" class="form-control form-control-sm" id="port-search-input" placeholder="Ticker (example: SBER)">
-                                    <button class="btn btn-outline-secondary btn-sm" type="button" id="port-search-btn">Add</button>
+                                    <input type="text" class="form-control form-control-sm" id="port-search-input" placeholder="Тикер, например SBER">
+                                    <button class="btn btn-outline-secondary btn-sm" type="button" id="port-search-btn">Добавить</button>
                                 </div>
                                 <div id="port-search-results" class="list-group mb-3 position-absolute w-100 shadow" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small">Риск-профиль</label>
+                                    <select class="form-select form-select-sm" id="portfolio-risk-preset">
+                                        <option value="base">Базово</option>
+                                        <option value="cautious">Осторожно</option>
+                                        <option value="aggressive">Агрессивно</option>
+                                    </select>
+                                </div>
 
                                 <div class="table-responsive mb-3">
                                     <table class="table table-sm table-hover" id="portfolio-table">
                                         <thead>
                                             <tr>
-                                                <th>Asset</th>
-                                                <th width="35%">Weight</th>
+                                                <th>Актив</th>
+                                                <th width="35%">Вес</th>
                                                 <th></th>
                                             </tr>
                                         </thead>
@@ -330,27 +447,27 @@
                                 </div>
 
                                 <div class="alert alert-warning py-1 px-2 small" id="weight-warning" style="display:none;">
-                                    Weights != 1.0. Will normalize.
+                                    Весы не суммируются в 1.0. Нормализуем автоматически, если сумма положительна.
                                 </div>
 
                                 <div class="row g-2 mt-3">
                                     <div class="col-6">
-                                        <label class="form-label small">Start</label>
+                                        <label class="form-label small">Начало</label>
                                         <input type="date" class="form-control form-control-sm" id="port-start">
                                     </div>
                                     <div class="col-6">
-                                        <label class="form-label small">End</label>
+                                        <label class="form-label small">Конец</label>
                                         <input type="date" class="form-control form-control-sm" id="port-end">
                                     </div>
                                 </div>
 
-                                <button class="btn btn-dark w-100 mt-3 btn-sm" id="calc-portfolio-btn">Analyze Portfolio</button>
+                                <button class="btn btn-dark w-100 mt-3 btn-sm" id="calc-portfolio-btn">Рассчитать риск портфеля</button>
                             </div>
                         </div>
 
                         <!-- Asset Allocation Chart -->
                         <div class="card d-none" id="allocation-card">
-                            <div class="card-header">Asset Allocation</div>
+                            <div class="card-header">Структура портфеля</div>
                             <div class="card-body p-0">
                                 <div id="allocation-chart" style="height: 250px;"></div>
                             </div>
@@ -358,24 +475,25 @@
                     </div>
 
                     <div class="col-lg-8">
+                        <div class="alert alert-danger inline-feedback" id="portfolio-feedback"></div>
                         <div id="port-results" class="d-none">
                             <!-- Portfolio Metrics -->
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <div class="card bg-dark text-white h-100">
                                         <div class="card-body text-center">
-                                            <div class="metric-label text-white-50">Portfolio VaR (95%)</div>
+                                            <div class="metric-label text-white-50">Потеря в плохой день</div>
                                             <div class="metric-value text-white" id="port-var-val">--</div>
-                                            <div class="small text-white-50 mt-2">Annual Volatility: <span id="port-vol">--</span>%</div>
+                                            <div class="small text-white-50 mt-2">Годовая волатильность: <span id="port-vol">--</span>%</div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="card h-100">
                                         <div class="card-body text-center">
-                                            <div class="metric-label">Expected Annual Return</div>
+                                            <div class="metric-label">Ожидаемая годовая доходность</div>
                                             <div class="metric-value text-success" id="port-return">--</div>
-                                            <div class="small text-muted mt-2">Based on historical data</div>
+                                            <div class="small text-muted mt-2">На основе истории</div>
                                         </div>
                                     </div>
                                 </div>
@@ -383,7 +501,7 @@
 
                             <!-- Efficient Frontier -->
                             <div class="card mb-3">
-                                <div class="card-header">Efficient Frontier (Risk vs Return)</div>
+                                <div class="card-header">Efficient Frontier</div>
                                 <div class="card-body p-2">
                                     <div id="frontier-chart" class="chart-container"></div>
                                 </div>
@@ -391,7 +509,7 @@
 
                             <!-- Cumulative Returns -->
                             <div class="card mb-3">
-                                <div class="card-header">Cumulative Performance</div>
+                                <div class="card-header">Накопленная доходность</div>
                                 <div class="card-body p-2">
                                     <div id="cumulative-chart" class="chart-container"></div>
                                 </div>
@@ -407,8 +525,8 @@
                         </div>
 
                         <div id="port-placeholder" class="text-center py-5 text-muted bg-white rounded border">
-                            <h5 class="mt-3">Portfolio Analysis</h5>
-                            <p>Add something!.</p>
+                            <h5 class="mt-3">Пока нет расчёта</h5>
+                            <p>Добавьте активы, задайте веса и нажмите «Рассчитать риск портфеля».</p>
                         </div>
                     </div>
                 </div>
@@ -417,11 +535,26 @@
             <!-- MOEX DATA TAB -->
             <div class="tab-pane fade" id="moex-data" role="tabpanel">
                 <div class="section-intro">
-                    <strong>MOEX Market.</strong> This is the data hub for the new derivatives workflow. Use it to load MOEX instruments, option board rows, and candles, then send that data into the pricing and risk tabs.
+                    <strong>MOEX.</strong> В Новичке это быстрый путь: выбрать инструмент, загрузить историю и автозаполнить поля. В Профи здесь же доступен полный hub с option board и SECID-driven workflow.
                 </div>
+                <div class="alert alert-danger inline-feedback" id="moex-feedback"></div>
                 <div class="row">
                     <div class="col-lg-4">
-                        <div class="card">
+                        <div class="card novice-only">
+                            <div class="card-header">1. Выберите рынок</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label small">Категория данных</label>
+                                    <select class="form-select form-select-sm" id="moex-simple-market">
+                                        <option value="shares">Акции MOEX</option>
+                                        <option value="bonds">Облигации MOEX</option>
+                                        <option value="futures">Фьючерсы MOEX</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="getMoexInstrumentsSimpleBtn">Подтянуть данные из MOEX</button>
+                            </div>
+                        </div>
+                        <div class="card pro-only">
                             <div class="card-header">1. Find Instruments</div>
                             <div class="card-body">
                                 <div class="mb-3">
@@ -435,7 +568,7 @@
                                 <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="getMoexInstrumentsBtn">Get Instruments</button>
                             </div>
                         </div>
-                        <div class="card mt-3">
+                        <div class="card mt-3 pro-only">
                             <div class="card-header">2. Load Option Board</div>
                             <div class="card-body">
                                 <div class="mb-3">
@@ -446,33 +579,41 @@
                             </div>
                         </div>
                         <div class="card mt-3">
-                            <div class="card-header">3. Show Candles</div>
+                            <div class="card-header novice-only">2. Загрузите историю</div>
+                            <div class="card-header pro-only">3. Show Candles</div>
                             <div class="card-body">
-                                <div class="mb-3">
+                                <div class="mb-3 pro-only">
                                     <label class="form-label small">SECID</label>
                                     <input type="text" class="form-control form-control-sm" id="moex-secid">
                                 </div>
+                                <div class="mb-3 novice-only">
+                                    <label class="form-label small">Выбранный инструмент</label>
+                                    <div class="status-strip mb-0" id="moex-selected-security-label">
+                                        <strong>Инструмент пока не выбран</strong>
+                                        Сначала выберите строку из списка ниже.
+                                    </div>
+                                </div>
                                 <div class="row g-2 mb-2">
                                     <div class="col-6">
-                                        <label class="form-label small">Start</label>
+                                        <label class="form-label small">Начало</label>
                                         <input type="date" class="form-control form-control-sm" id="moex-start-date">
                                     </div>
                                     <div class="col-6">
-                                        <label class="form-label small">End</label>
+                                        <label class="form-label small">Конец</label>
                                         <input type="date" class="form-control form-control-sm" id="moex-end-date">
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="getMoexCandlesBtn">Get Candles</button>
+                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="getMoexCandlesBtn">Загрузить историю</button>
                             </div>
                         </div>
                     </div>
                     <div class="col-lg-8">
                         <div class="status-strip" id="moex-workflow-output">
-                            <strong>No MOEX context selected yet</strong>
-                            Load instruments, option board, or candles and use row actions to push data into the derivatives screens.
+                            <strong>MOEX context пока не выбран</strong>
+                            Загрузите список инструментов, выберите строку и затем подтяните историю цен.
                         </div>
                         <div class="card">
-                            <div class="card-header">Results</div>
+                            <div class="card-header">Результаты</div>
                             <div class="card-body">
                                 <div class="result-grid mb-3" id="moex-candles-stats-output">
                                     <div class="result-card"><div class="label">Last Close</div><div class="value">--</div></div>
@@ -481,15 +622,16 @@
                                     <div class="result-card"><div class="label">Observations</div><div class="value">--</div></div>
                                 </div>
                                 <div id="moex-results-instruments" class="mb-3">
-                                    <h6>Instrument List</h6>
+                                    <h6 class="novice-only">Список инструментов</h6>
+                                    <h6 class="pro-only">Instrument List</h6>
                                     <div class="table-output" id="moex-instruments-output"><p class="soft-note">No data yet.</p></div>
                                 </div>
-                                <div id="moex-results-option-board" class="mb-3">
+                                <div id="moex-results-option-board" class="mb-3 pro-only">
                                     <h6>Option Board</h6>
                                     <div class="table-output" id="moex-option-board-output"><p class="soft-note">No data yet.</p></div>
                                 </div>
                                 <div id="moex-results-candles" class="mb-3">
-                                    <h6>Candles Chart</h6>
+                                    <h6>История / Candles</h6>
                                     <div id="moexCandlesChart" class="chart-container"></div>
                                 </div>
                             </div>
@@ -499,15 +641,20 @@
             </div>
 
             <!-- OPTION PRICING & GREEKS TAB -->
-            <div class="tab-pane fade" id="option-pricing" role="tabpanel">
+            <div class="tab-pane fade ui-pro-pane" id="option-pricing" role="tabpanel">
                 <div class="section-intro">
-                    <strong>Options.</strong> This screen prices a single option position and shows Greeks. It is the fast pre-risk step before you move into VaR or stress analysis.
+                    <strong>Options.</strong> Это экран для базовой оценки опциона: сколько он стоит сейчас и насколько чувствителен к движению рынка, волатильности и времени. Обычно это первый шаг перед `Option Risk` и `Stress`.
                 </div>
+                <div class="alert alert-danger inline-feedback" id="option-feedback"></div>
                 <div class="row">
                     <div class="col-lg-4">
                         <div class="card">
-                            <div class="card-header">Option Parameters</div>
+                            <div class="card-header">Параметры опциона</div>
                             <div class="card-body">
+                                <div class="theory-card">
+                                    <strong>Что покажет этот экран</strong>
+                                    Здесь считаются цена опциона и Greeks. `Delta` показывает чувствительность к базовому активу, `Vega` — к волатильности, `Theta` — к времени.
+                                </div>
                                 <div class="mb-3">
                                     <label class="form-label small">Option Type</label>
                                     <select class="form-select form-select-sm" id="op-type">
@@ -594,19 +741,24 @@
             </div>
 
             <!-- FUTURES / SPFI TAB -->
-            <div class="tab-pane fade" id="forward-pricing" role="tabpanel">
+            <div class="tab-pane fade ui-pro-pane" id="forward-pricing" role="tabpanel">
                 <div class="section-intro">
-                    <strong>Futures &amp; SPFI.</strong> This screen is for linear derivatives. It prices the contract with a carry model, shows PnL versus entry, and lets you run linear VaR/ES on the same position.
+                    <strong>Futures &amp; SPFI.</strong> Это экран для линейных деривативов. Сначала он показывает справедливую цену контракта и результат относительно вашей цены входа, а затем оценивает риск этой же позиции.
                     <ul class="helper-list mt-2">
-                        <li>The same cost-of-carry logic is used for exchange-traded futures and OTC forwards / SPFI-style linear contracts.</li>
-                        <li>If entry price is unknown, the screen still shows fair price and carry.</li>
+                        <li>Одна и та же carry-модель используется и для биржевых futures, и для внебиржевых forward / SPFI-контрактов.</li>
+                        <li>Если цена входа неизвестна, экран всё равно покажет fair price и carry.</li>
                     </ul>
                 </div>
+                <div class="alert alert-danger inline-feedback" id="forward-feedback"></div>
                 <div class="row">
                     <div class="col-lg-4">
                         <div class="card">
-                            <div class="card-header">Linear Derivative Inputs</div>
+                            <div class="card-header">Параметры контракта</div>
                             <div class="card-body">
+                                <div class="theory-card">
+                                    <strong>Что значат результаты</strong>
+                                    `Fair Price` — теоретическая цена контракта сейчас. `PnL vs Entry` показывает, сколько вы выигрываете или теряете относительно цены входа.
+                                </div>
                                 <div class="mb-3">
                                     <label class="form-label small">Instrument Type</label>
                                     <select class="form-select form-select-sm" id="fp-type">
@@ -652,12 +804,14 @@
                             </div>
                         </div>
                         <div class="card">
-                            <div class="card-header">Linear Risk Inputs</div>
+                            <div class="card-header">Параметры риска</div>
                             <div class="card-body">
                                 <div class="mb-3">
                                     <label class="form-label small">Confidence Level</label>
                                     <select class="form-select form-select-sm" id="fpvar-confidence">
+                                        <option value="0.90">90%</option>
                                         <option value="0.95">95%</option>
+                                        <option value="0.975">97.5%</option>
                                         <option value="0.99">99%</option>
                                     </select>
                                 </div>
@@ -698,7 +852,7 @@
                                     <div class="result-card"><div class="label">Scenario Fair</div><div class="value" id="fp-res-scenario-fair">--</div></div>
                                     <div class="result-card"><div class="label">Scenario PnL</div><div class="value" id="fp-res-scenario-pnl">--</div></div>
                                 </div>
-                                <div class="json-output" id="forward-pricing-output">No data.</div>
+                                <div id="forward-pricing-output"><p class="soft-note mb-0">No pricing details yet.</p></div>
                             </div>
                         </div>
                         <div class="card">
@@ -717,19 +871,26 @@
             </div>
 
             <!-- OPTION VAR TAB -->
-            <div class="tab-pane fade" id="option-var" role="tabpanel">
+            <div class="tab-pane fade ui-pro-pane" id="option-var" role="tabpanel">
                 <div class="section-intro">
-                    <strong>Option Risk.</strong> This screen converts one option position into risk metrics: first Greeks and cash Greeks, then analytical VaR and Monte Carlo, and optionally full revaluation.
+                    <strong>Option Risk.</strong> Здесь мы оцениваем риск опциона несколькими способами. Сначала считаем быструю оценку по формулам, затем Monte Carlo, а затем при желании делаем Full Revaluation, то есть полную переоценку опциона в каждом сценарии.
                 </div>
+                <div class="alert alert-danger inline-feedback" id="option-var-feedback"></div>
                 <div class="row">
                     <div class="col-lg-4">
                         <div class="card">
-                            <div class="card-header">Option VaR Parameters</div>
+                            <div class="card-header">Параметры риска опциона</div>
                             <div class="card-body">
+                                <div class="theory-card">
+                                    <strong>Как читать этот экран</strong>
+                                    Сверху вниз это три уровня точности: `Быстрая оценка`, `Monte Carlo` и `Full Revaluation`. Monte Carlo находится в правой колонке в отдельном блоке с графиком распределения.
+                                </div>
                                 <div class="mb-3">
                                     <label class="form-label small">Confidence Level</label>
                                     <select class="form-select form-select-sm" id="ovar-confidence">
+                                        <option value="0.90">90%</option>
                                         <option value="0.95">95%</option>
+                                        <option value="0.975">97.5%</option>
                                         <option value="0.99">99%</option>
                                     </select>
                                 </div>
@@ -742,7 +903,8 @@
                                     <input type="checkbox" class="form-check-input" id="ovar-include-theta" checked>
                                 </div>
                                 <hr>
-                                <h6>Underlying Asset Parameters (Daily)</h6>
+                                <div class="guided-step">1. Рынок базового актива</div>
+                                <div class="subsection-note">Здесь задаём, как в среднем ведёт себя базовый актив за день: доходность и волатильность. Эти параметры нужны для VaR и Monte Carlo.</div>
                                 <div class="mb-3">
                                     <label class="form-label small">Mu (Expected Return)</label>
                                     <input type="number" class="form-control form-control-sm" id="ovar-mu" value="0.0001" step="0.00001">
@@ -752,7 +914,8 @@
                                     <input type="number" class="form-control form-control-sm" id="ovar-sigma" value="0.01" step="0.0001">
                                 </div>
                                 <hr>
-                                <h6>Option Position (Single for now)</h6>
+                                <div class="guided-step">2. Сам опцион</div>
+                                <div class="subsection-note">Опишите контракт, который хотите проверить. Если вы уже считали его в `Options`, используйте кнопку `Send To Option Risk`.</div>
                                 <div class="mb-3">
                                     <label class="form-label small">Option Type</label>
                                     <select class="form-select form-select-sm" id="ovar-op-type">
@@ -793,10 +956,19 @@
                                     <input type="number" class="form-control form-control-sm" id="ovar-op-multiplier" value="1">
                                 </div>
                                 <div class="split-section">
-                                    <h6>Simulation Controls</h6>
+                                    <div class="guided-step">3. Monte Carlo и Full Revaluation</div>
+                                    <div class="subsection-note">Monte Carlo моделирует тысячи возможных рыночных дней. Чем больше симуляций, тем стабильнее оценка, но расчёт идёт чуть дольше.</div>
                                     <div class="mb-3">
                                         <label class="form-label small">Simulations</label>
                                         <input type="number" class="form-control form-control-sm" id="ovar-simulations" value="10000" step="1000">
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input type="checkbox" class="form-check-input" id="ovar-use-fixed-seed">
+                                        <label class="form-check-label small" for="ovar-use-fixed-seed">Use fixed seed</label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small">Seed</label>
+                                        <input type="number" class="form-control form-control-sm" id="ovar-seed" value="42" step="1">
                                     </div>
                                     <div class="form-check mb-3">
                                         <input type="checkbox" class="form-check-input" id="ovar-full-revaluation" checked>
@@ -830,6 +1002,10 @@
                             <strong>Risk workflow</strong>
                             Fast approximations and simulated repricing are shown together so you can compare methods on one screen.
                         </div>
+                        <div class="theory-card">
+                            <strong>Где Monte Carlo</strong>
+                            Сразу под таблицей `Option VaR Approximations` идёт блок `Monte Carlo Simulations (PnL Distribution)`. В нём строится распределение результатов по тысячам сценариев. Если включён `Full Revaluation`, ниже появляется ещё и более точная нелинейная оценка.
+                        </div>
                         <div class="card">
                             <div class="card-header">Results</div>
                             <div class="card-body">
@@ -840,6 +1016,7 @@
                                     <div class="result-card"><div class="label">Full Reval VaR</div><div class="value">--</div></div>
                                 </div>
                                 <h6>Option VaR Approximations</h6>
+                                <p class="soft-note">`Delta-Normal` и `Delta-Gamma` дают быструю формульную оценку риска. Они удобны для первого взгляда, но не моделируют рынок так полно, как Monte Carlo.</p>
                                 <div class="table-responsive mb-3">
                                     <table class="table table-sm table-bordered">
                                         <thead>
@@ -857,8 +1034,9 @@
                                     </table>
                                 </div>
                                 <h6>Monte Carlo Simulations (PnL Distribution)</h6>
+                                <p class="soft-note">Monte Carlo = мы моделируем много возможных рыночных исходов и смотрим, как меняется PnL позиции. Это более наглядно и ближе к реальности, чем одна формула.</p>
                                 <div id="ovar-mc-chart" class="chart-container mb-3"></div>
-                                <div class="json-output" id="ovar-mc-output">No MC data.</div>
+                                <div id="ovar-mc-output"><p class="soft-note mb-0">No MC data.</p></div>
                                 <div class="split-section" id="ovar-full-output">
                                     <p class="soft-note mb-0">Full revaluation metrics will appear here when enabled.</p>
                                 </div>
@@ -869,15 +1047,20 @@
             </div>
 
             <!-- BACKTESTING TAB -->
-            <div class="tab-pane fade" id="backtesting" role="tabpanel">
+            <div class="tab-pane fade ui-pro-pane" id="backtesting" role="tabpanel">
                 <div class="section-intro">
-                    <strong>Model Check.</strong> Feed in a historical P&amp;L series to verify whether the VaR model behaves properly over time and how it performs on bad days.
+                    <strong>Model Check.</strong> Здесь можно проверить, насколько модель риска вела себя на истории. Экран показывает, часто ли фактические убытки пробивали VaR и были ли эти пробои слишком частыми.
                 </div>
+                <div class="alert alert-danger inline-feedback" id="backtest-feedback"></div>
                 <div class="row">
                     <div class="col-lg-4">
                         <div class="card">
-                            <div class="card-header">Backtest Parameters</div>
+                            <div class="card-header">Параметры проверки модели</div>
                             <div class="card-body">
+                                <div class="theory-card">
+                                    <strong>Когда использовать</strong>
+                                    Если у вас уже есть исторический ряд PnL, этот экран поможет понять, не занижает ли модель риск и не слишком ли оптимистичны её оценки.
+                                </div>
                                 <div class="mb-3">
                                     <label class="form-label small">P&L Series (comma-separated)</label>
                                     <textarea class="form-control form-control-sm" id="bt-pnl-series" rows="5"></textarea>
@@ -885,7 +1068,9 @@
                                 <div class="mb-3">
                                     <label class="form-label small">Confidence Level</label>
                                     <select class="form-select form-select-sm" id="bt-confidence">
+                                        <option value="0.90">90%</option>
                                         <option value="0.95">95%</option>
+                                        <option value="0.975">97.5%</option>
                                         <option value="0.99">99%</option>
                                     </select>
                                 </div>
@@ -914,15 +1099,20 @@
             </div>
 
             <!-- RISK ATTRIBUTION TAB -->
-            <div class="tab-pane fade" id="risk-attribution" role="tabpanel">
+            <div class="tab-pane fade ui-pro-pane" id="risk-attribution" role="tabpanel">
                 <div class="section-intro">
-                    <strong>Factor Breakdown.</strong> This screen decomposes total portfolio VaR into factor-level contributions so you can see which risk factors consume the limit.
+                    <strong>Factor Breakdown.</strong> Этот экран разлагает общий VaR по факторам риска. Он полезен, когда нужно понять, что именно больше всего нагружает лимит риска.
                 </div>
+                <div class="alert alert-danger inline-feedback" id="risk-attribution-feedback"></div>
                 <div class="row">
                     <div class="col-lg-4">
                         <div class="card">
-                            <div class="card-header">Risk Attribution Parameters</div>
+                            <div class="card-header">Параметры факторного разложения</div>
                             <div class="card-body">
+                                <div class="theory-card">
+                                    <strong>Что здесь важно</strong>
+                                    Это продвинутый quant-блок. Если у вас нет факторной модели, его можно пропустить. Если модель есть, он покажет, какие факторы дают основной вклад в VaR.
+                                </div>
                                 <div class="mb-3">
                                     <label class="form-label small">Factor Names (comma-separated)</label>
                                     <input type="text" class="form-control form-control-sm" id="ra-factor-names" value="Factor1,Factor2">
@@ -962,48 +1152,125 @@
             <!-- STRESS TESTING TAB -->
             <div class="tab-pane fade" id="stress-testing" role="tabpanel">
                 <div class="section-intro">
-                    <strong>Stress Scenarios.</strong> Define an option portfolio and evaluate how it behaves under standard and custom shocks to underlying prices, rates, and volatility.
+                    <strong>Stress-сценарии.</strong> В Новичке доступны готовые стресс-пресеты для быстрой проверки одной позиции. В Профи остаётся полный режим со списком позиций и кастомными шоками.
                 </div>
+                <div class="alert alert-danger inline-feedback" id="stress-feedback"></div>
                 <div class="row">
                     <div class="col-lg-4">
-                        <div class="card">
-                            <div class="card-header">Stress Test Parameters</div>
+                        <div class="card novice-only">
+                            <div class="card-header">Быстрый stress-check</div>
                             <div class="card-body">
                                 <div class="mb-3">
-                                    <label class="form-label small">Positions (JSON array of objects)</label>
-                                    <textarea class="form-control form-control-sm" id="st-positions" rows="8">
-[
-    {
-        "spot": 100.0, "strike": 100.0, "maturity_years": 0.5, "rate": 0.05,
-        "volatility": 0.2, "dividend_yield": 0.0, "quantity": 10.0,
-        "multiplier": 1.0, "underlying_id": "U1", "option_type": "call"
-    }
-]
-                                    </textarea>
+                                    <label class="form-label small">Сценарий</label>
+                                    <select class="form-select form-select-sm" id="st-simple-preset">
+                                        <option value="market_minus_10">Базовый стресс: рынок -10%</option>
+                                        <option value="market_minus_20">Сильный стресс: рынок -20%</option>
+                                        <option value="crash_vol_up">Кризис: рынок -15% и волатильность вверх</option>
+                                        <option value="rates_up">Ставки вверх</option>
+                                        <option value="rates_down">Ставки вниз</option>
+                                    </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label small">Horizon Days</label>
-                                    <input type="number" class="form-control form-control-sm" id="st-horizon-days" value="10">
+                                    <label class="form-label small">Тип опциона</label>
+                                    <select class="form-select form-select-sm" id="st-simple-option-type">
+                                        <option value="call">Call</option>
+                                        <option value="put">Put</option>
+                                    </select>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label small">Underlying Return Shocks (JSON object)</label>
-                                    <textarea class="form-control form-control-sm" id="st-underlying-shocks" rows="3">{"U1": -0.1}</textarea>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small">Spot</label>
+                                        <input type="number" class="form-control form-control-sm" id="st-simple-spot" value="100" step="0.01">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Strike</label>
+                                        <input type="number" class="form-control form-control-sm" id="st-simple-strike" value="100" step="0.01">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Maturity (Years)</label>
+                                        <input type="number" class="form-control form-control-sm" id="st-simple-maturity" value="0.5" step="0.01">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Rate</label>
+                                        <input type="number" class="form-control form-control-sm" id="st-simple-rate" value="0.05" step="0.0001">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Volatility</label>
+                                        <input type="number" class="form-control form-control-sm" id="st-simple-volatility" value="0.2" step="0.001">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Quantity</label>
+                                        <input type="number" class="form-control form-control-sm" id="st-simple-quantity" value="10" step="1">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Multiplier</label>
+                                        <input type="number" class="form-control form-control-sm" id="st-simple-multiplier" value="1" step="1">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Horizon Days</label>
+                                        <input type="number" class="form-control form-control-sm" id="st-simple-horizon-days" value="10">
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label small">Volatility Shift (decimal)</label>
-                                    <input type="number" class="form-control form-control-sm" id="st-vol-shift" value="0.05" step="0.001">
+                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="runStressTestBtn">Запустить stress-check</button>
+                            </div>
+                        </div>
+                        <div class="card pro-only">
+                            <div class="card-header">Расширенный stress-конструктор</div>
+                            <div class="card-body">
+                                <div class="theory-card">
+                                    <strong>Что такое stress-сценарий</strong>
+                                    Вы задаёте, что случилось с рынком: насколько упал или вырос базовый актив, как сдвинулась волатильность и ставка. Сервис затем пересчитывает стоимость каждой позиции и показывает возможный результат портфеля.
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label small">Rate Shift (decimal)</label>
-                                    <input type="number" class="form-control form-control-sm" id="st-rate-shift" value="0.0" step="0.0001">
+                                <div class="guided-step">1. Позиции</div>
+                                <div class="subsection-note">Каждая карточка ниже — это один опцион в вашем портфеле. Никакого JSON вводить не нужно.</div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div class="helper-chip">Портфель собирается вручную по карточкам</div>
+                                    <button type="button" class="btn btn-outline-dark btn-sm" id="addStressPositionBtn">Добавить позицию</button>
                                 </div>
-                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="runStressTestBtn">Run Stress Test</button>
+                                <div id="stress-pro-positions" class="mb-3"></div>
+                                <div class="split-section">
+                                    <div class="guided-step">2. Сценарий</div>
+                                    <div class="subsection-note">Сначала выберите шаблон сценария, затем при желании вручную подправьте шоки.</div>
+                                    <div class="mb-3">
+                                        <label class="form-label small">Scenario Template</label>
+                                        <select class="form-select form-select-sm" id="st-pro-preset">
+                                            <option value="market_minus_10">Базовый стресс: рынок -10%</option>
+                                            <option value="market_minus_20">Сильный стресс: рынок -20%</option>
+                                            <option value="crash_vol_up">Кризис: рынок -15% и волатильность вверх</option>
+                                            <option value="rates_up">Ставки вверх</option>
+                                            <option value="rates_down">Ставки вниз</option>
+                                            <option value="custom">Свой сценарий</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small">Horizon Days</label>
+                                        <input type="number" class="form-control form-control-sm" id="st-horizon-days" value="10">
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="form-label small mb-0">Shocks By Underlying</label>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="refreshStressShocksBtn">Обновить список</button>
+                                        </div>
+                                        <div id="stress-shocks-editor"></div>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label small">Volatility Shift (decimal)</label>
+                                            <input type="number" class="form-control form-control-sm" id="st-vol-shift" value="0.05" step="0.001">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small">Rate Shift (decimal)</label>
+                                            <input type="number" class="form-control form-control-sm" id="st-rate-shift" value="0.0" step="0.0001">
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="runStressTestBtnPro">Run Stress Test</button>
                             </div>
                         </div>
                     </div>
                     <div class="col-lg-8">
                         <div class="card">
-                            <div class="card-header">Results</div>
+                            <div class="card-header">Результаты</div>
                             <div class="card-body">
                                 <h6>Stress Test Scenarios</h6>
                                 <div id="stress-test-output"><p class="soft-note">No data yet.</p></div>
@@ -1021,15 +1288,16 @@
         const showLoading = () => document.getElementById('loading').classList.remove('d-none');
         const hideLoading = () => document.getElementById('loading').classList.add('d-none');
 
-        // Helper to format currency
         const fmtCurrency = (v) => v.toLocaleString('ru-RU', {style: 'currency', currency: 'RUB'});
-        // Helper to format numbers
         const fmtNumber = (v, precision = 4) => v.toLocaleString('en-US', {minimumFractionDigits: precision, maximumFractionDigits: precision});
-
-        // Helper to parse comma-separated numbers
         const parseNumberList = (text) => text.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
-        // Helper to parse comma-separated strings
         const parseStringList = (text) => text.split(',').map(s => s.trim()).filter(s => s !== '');
+        const normalizeDecimalText = (value) => String(value ?? '').trim().replace(',', '.');
+        const parseDecimal = (value, fallback = NaN) => {
+            const parsed = parseFloat(normalizeDecimalText(value));
+            return Number.isNaN(parsed) ? fallback : parsed;
+        };
+        const getNumericValue = (id, fallback = NaN) => parseDecimal(document.getElementById(id)?.value, fallback);
         const safeNumber = (value, precision = 4) => {
             if (value === null || value === undefined || Number.isNaN(Number(value))) return '--';
             return fmtNumber(Number(value), precision);
@@ -1056,6 +1324,126 @@
                 }
             }
             return null;
+        };
+        const RISK_PRESETS = {
+            cautious: { label: 'Осторожно', confidence: 0.99, liquidationDays: 3, spreadPercent: 0.15 },
+            base: { label: 'Базово', confidence: 0.95, liquidationDays: 1, spreadPercent: 0.10 },
+            aggressive: { label: 'Агрессивно', confidence: 0.90, liquidationDays: 1, spreadPercent: 0.08 },
+        };
+        const MOEX_SIMPLE_MARKETS = {
+            shares: { engine: 'stock', market: 'shares' },
+            bonds: { engine: 'stock', market: 'bonds' },
+            futures: { engine: 'futures', market: 'forts' },
+        };
+        const SIMPLE_STRESS_PRESETS = {
+            market_minus_10: { name: 'Базовый стресс', shocks: { U1: -0.10 }, volShift: 0.00, rateShift: 0.00 },
+            market_minus_20: { name: 'Сильный стресс', shocks: { U1: -0.20 }, volShift: 0.00, rateShift: 0.00 },
+            crash_vol_up: { name: 'Кризис', shocks: { U1: -0.15 }, volShift: 0.10, rateShift: 0.00 },
+            rates_up: { name: 'Ставки вверх', shocks: { U1: 0.0 }, volShift: 0.00, rateShift: 0.01 },
+            rates_down: { name: 'Ставки вниз', shocks: { U1: 0.0 }, volShift: 0.00, rateShift: -0.01 },
+        };
+        const PRO_TAB_BUTTON_IDS = [
+            'option-pricing-tab',
+            'forward-pricing-tab',
+            'option-var-tab',
+            'backtesting-tab',
+            'risk-attribution-tab',
+        ];
+        const PRO_TAB_PANE_IDS = [
+            'option-pricing',
+            'forward-pricing',
+            'option-var',
+            'backtesting',
+            'risk-attribution',
+        ];
+        const STRESS_UNDERLYING_OPTIONS = ['U1', 'U2', 'U3', 'U4'];
+        const FIELD_HELP = {
+            instrumentName: 'Введите тикер или часть названия бумаги. Поиск нужен, чтобы подтянуть историю цены из Tinkoff.',
+            startDate: 'Начало исторического периода. Чем длиннее период, тем стабильнее оценка риска.',
+            endDate: 'Последний день истории, которую берём в расчёт.',
+            manualPrices: 'Сюда можно вставить ряд цен вручную через пробел или запятую, если API не нужен.',
+            'single-risk-preset': 'Готовый набор настроек риска. Осторожно = более строгая оценка, Агрессивно = мягче.',
+            positionSize: 'Сколько единиц актива у вас в позиции. Чем больше позиция, тем больше денежный риск.',
+            confidence: 'Насколько строгой должна быть оценка. 95% используется часто, 99% показывает более редкий плохой день.',
+            spreadPercent: 'Оценка потери на спреде при быстрой продаже позиции.',
+            liquidationDays: 'За сколько дней вы предполагаете закрывать позицию. Чем дольше выход, тем иначе считается LVaR.',
+            'portfolio-risk-preset': 'Тот же смысл, что и в одном активе, но для портфельного расчёта.',
+            'port-start': 'Начало периода, на котором строится совместная история активов.',
+            'port-end': 'Конец периода для портфельной истории.',
+            'moex-simple-market': 'Выберите, какой рынок MOEX хотите просмотреть: акции, облигации или фьючерсы.',
+            'moex-engine': 'Технический параметр MOEX ISS API. В Pro можно выбрать рынок вручную.',
+            'moex-market': 'Подрынок MOEX. Нужен только для продвинутого режима.',
+            'moex-underlying': 'Код базового актива для option board, например `AFLT`, `SBER` или `Si`.',
+            'moex-secid': 'Код конкретного инструмента на MOEX. По нему загружается история свечей.',
+            'moex-start-date': 'Начало периода для свечей MOEX.',
+            'moex-end-date': 'Конец периода для свечей MOEX.',
+            'op-type': 'Call выигрывает при росте базового актива, Put — при падении.',
+            'op-spot': 'Текущая цена базового актива.',
+            'op-strike': 'Цена, по которой опцион даёт право купить или продать базовый актив.',
+            'op-maturity': 'Сколько лет осталось до экспирации опциона.',
+            'op-rate': 'Безрисковая ставка, используемая в модели Блэка-Шоулза.',
+            'op-volatility': 'Ожидаемая волатильность базового актива. Один из самых чувствительных параметров.',
+            'op-dividend': 'Дивидендная доходность базового актива. Для акций можно учитывать ожидаемые дивиденды.',
+            'op-quantity': 'Количество контрактов в позиции.',
+            'op-multiplier': 'Во сколько единиц базового актива пересчитывается один контракт.',
+            'fp-type': 'Выберите тип линейного дериватива: биржевой futures или внебиржевой SPFI / forward.',
+            'fp-spot': 'Текущая цена базового актива, от которой строится fair price контракта.',
+            'fp-entry-price': 'Цена, по которой вы вошли в контракт. Нужна для расчёта PnL относительно входа.',
+            'fp-maturity': 'Сколько лет осталось до исполнения контракта.',
+            'fp-rate': 'Безрисковая ставка для модели carry.',
+            'fp-income-yield': 'Доходность хранения / carry / convenience yield базового актива.',
+            'fp-quantity': 'Количество контрактов.',
+            'fp-multiplier': 'Размер одного контракта в денежных единицах базового актива.',
+            'fp-scenario-spot': 'Сценарная цена базового актива, чтобы сразу увидеть альтернативный исход.',
+            'fpvar-confidence': 'Строгость оценки линейного риска.',
+            'fpvar-horizon': 'На сколько дней вперёд оцениваем риск.',
+            'fpvar-mu': 'Ожидаемое среднее дневное изменение цены базового актива.',
+            'fpvar-sigma': 'Ожидаемая дневная волатильность базового актива.',
+            'fpvar-scenario-move': 'Ручной сценарий движения цены, например `-0.05` = падение на 5%.',
+            'ovar-confidence': 'Строгость оценки VaR для опциона.',
+            'ovar-horizon': 'На сколько дней вперёд смотрим риск.',
+            'ovar-include-theta': 'Если включено, учитывается естественное снижение стоимости опциона из-за времени.',
+            'ovar-mu': 'Средняя дневная доходность базового актива.',
+            'ovar-sigma': 'Дневная волатильность базового актива. Часто её удобно подтянуть из MOEX candles.',
+            'ovar-op-type': 'Тип опциона в риск-расчёте.',
+            'ovar-op-spot': 'Текущая цена базового актива для риск-модели.',
+            'ovar-op-strike': 'Страйк опциона.',
+            'ovar-op-maturity': 'Оставшийся срок жизни опциона.',
+            'ovar-op-rate': 'Безрисковая ставка для переоценки.',
+            'ovar-op-volatility': 'Волатильность, используемая в базовой цене опциона.',
+            'ovar-op-dividend': 'Дивидендная доходность базового актива.',
+            'ovar-op-quantity': 'Количество контрактов.',
+            'ovar-op-multiplier': 'Размер одного контракта.',
+            'ovar-simulations': 'Сколько сценариев симулирует Monte Carlo. Больше = стабильнее, но медленнее.',
+            'ovar-use-fixed-seed': 'Включите, если хотите воспроизводимый Monte Carlo с одинаковым результатом при повторе.',
+            'ovar-seed': 'Число, которое фиксирует псевдослучайную последовательность для Monte Carlo.',
+            'ovar-full-revaluation': 'Если включено, в каждом сценарии опцион полностью переоценивается, а не аппроксимируется.',
+            'ovar-vol-mean': 'Средний сдвиг волатильности в сценариях full revaluation.',
+            'ovar-vol-sigma': 'Разброс шока волатильности между сценариями.',
+            'ovar-rate-mean': 'Средний сдвиг ставки в сценариях full revaluation.',
+            'ovar-rate-sigma': 'Разброс шока ставки между сценариями.',
+            'bt-pnl-series': 'Исторический ряд дневного PnL. Нужен, чтобы проверить, насколько модель VaR работала на истории.',
+            'bt-confidence': 'Уровень строгости проверяемого VaR.',
+            'bt-window': 'Размер обучающего окна для rolling backtest.',
+            'ra-factor-names': 'Названия риск-факторов, по которым хотите разложить общий VaR.',
+            'ra-delta-cash': 'Денежная чувствительность портфеля к каждому фактору.',
+            'ra-mu-horizon': 'Ожидаемое изменение каждого фактора на выбранном горизонте.',
+            'ra-covariance-horizon': 'Ковариационная матрица факторов. Она описывает, как факторы двигаются вместе.',
+            'ra-z-value': 'Нормальный квантиль для выбранного confidence level.',
+            'st-simple-preset': 'Готовый стресс-сценарий для быстрой проверки одной позиции.',
+            'st-simple-option-type': 'Тип опциона в stress-check.',
+            'st-simple-spot': 'Текущая цена базового актива перед стрессом.',
+            'st-simple-strike': 'Страйк опциона.',
+            'st-simple-maturity': 'Срок до экспирации опциона.',
+            'st-simple-rate': 'Ставка для переоценки.',
+            'st-simple-volatility': 'Текущая волатильность до стресс-шока.',
+            'st-simple-quantity': 'Количество контрактов в позиции.',
+            'st-simple-multiplier': 'Размер одного контракта.',
+            'st-simple-horizon-days': 'Через сколько дней после стресса пересчитываем позицию.',
+            'st-pro-preset': 'Шаблон сценария для продвинутого stress-теста. Можно выбрать готовый или свой.',
+            'st-horizon-days': 'На сколько дней вперёд переносится сценарий.',
+            'st-vol-shift': 'Как меняется волатильность во всём сценарии. `0.05` значит +5 процентных пунктов.',
+            'st-rate-shift': 'Как меняется ставка во всём сценарии.'
         };
         const buildActionButtons = (actions) => `
             <div class="table-actions">
@@ -1100,12 +1488,197 @@
                 `).join('')}
             </div>
         `;
-        const renderRawDetails = (payload) => `
-            <details class="mt-3">
-                <summary class="soft-note">Show raw data</summary>
-                <div class="json-output mt-2">${escapeHtml(JSON.stringify(payload, null, 2))}</div>
-            </details>
+        const renderRawDetails = (payload) => {
+            if (currentExperienceMode === 'novice') return '';
+            return `
+                <details class="mt-3">
+                    <summary class="soft-note">Показать детали</summary>
+                    <div class="json-output mt-2">${escapeHtml(JSON.stringify(payload, null, 2))}</div>
+                </details>
+            `;
+        };
+        const applyFieldHelp = () => {
+            Object.entries(FIELD_HELP).forEach(([id, help]) => {
+                const node = document.getElementById(id);
+                if (!node || node.dataset.helpBound === 'true') return;
+                const helpNode = document.createElement('div');
+                helpNode.className = 'field-help';
+                helpNode.innerText = help;
+                const anchor = node.classList.contains('form-check-input') && node.nextElementSibling
+                    ? node.nextElementSibling
+                    : node;
+                anchor.insertAdjacentElement('afterend', helpNode);
+                node.dataset.helpBound = 'true';
+            });
+        };
+
+        const defaultStressPosition = (index = 0) => ({
+            option_type: 'call',
+            underlying_id: STRESS_UNDERLYING_OPTIONS[Math.min(index, STRESS_UNDERLYING_OPTIONS.length - 1)],
+            spot: 100,
+            strike: 100,
+            maturity_years: 0.5,
+            rate: 0.05,
+            volatility: 0.2,
+            dividend_yield: 0.0,
+            quantity: 10,
+            multiplier: 1.0,
+        });
+
+        const getStressProPositions = () => Array.from(document.querySelectorAll('.stress-position-card')).map((card, index) => ({
+            option_type: card.querySelector('[data-field=\"option_type\"]')?.value || 'call',
+            underlying_id: card.querySelector('[data-field=\"underlying_id\"]')?.value || `U${index + 1}`,
+            spot: parseDecimal(card.querySelector('[data-field=\"spot\"]')?.value),
+            strike: parseDecimal(card.querySelector('[data-field=\"strike\"]')?.value),
+            maturity_years: parseDecimal(card.querySelector('[data-field=\"maturity_years\"]')?.value),
+            rate: parseDecimal(card.querySelector('[data-field=\"rate\"]')?.value),
+            volatility: parseDecimal(card.querySelector('[data-field=\"volatility\"]')?.value),
+            dividend_yield: parseDecimal(card.querySelector('[data-field=\"dividend_yield\"]')?.value, 0),
+            quantity: parseDecimal(card.querySelector('[data-field=\"quantity\"]')?.value),
+            multiplier: parseDecimal(card.querySelector('[data-field=\"multiplier\"]')?.value),
+        }));
+
+        const renderStressShocks = (preferredValues = {}) => {
+            const container = document.getElementById('stress-shocks-editor');
+            if (!container) return;
+
+            const positions = getStressProPositions();
+            const uniqueUnderlyingIds = [...new Set(positions.map(position => position.underlying_id).filter(Boolean))];
+            if (uniqueUnderlyingIds.length === 0) {
+                container.innerHTML = '<div class="field-help">Сначала добавьте хотя бы одну позицию, чтобы появились базовые активы для шоков.</div>';
+                return;
+            }
+
+            container.innerHTML = uniqueUnderlyingIds.map((underlyingId) => `
+                <div class="card mb-2 border-0 bg-light">
+                    <div class="card-body py-2">
+                        <label class="form-label small mb-1">${escapeHtml(underlyingId)} return shock</label>
+                        <input type="number" class="form-control form-control-sm stress-shock-input" data-underlying-id="${escapeHtml(underlyingId)}" value="${escapeHtml(String(preferredValues[underlyingId] ?? 0))}" step="0.01">
+                        <div class="field-help">Шок доходности для всех позиций с этим базовым активом. `-0.10` означает падение на 10%.</div>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        const buildStressPositionCard = (position, index) => `
+            <div class="card stress-position-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <div class="fw-semibold">Позиция ${index + 1}</div>
+                            <div class="field-help">Одна карточка = один опцион, который войдёт в stress-тест портфеля.</div>
+                        </div>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-action="remove-stress-position">Убрать</button>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small">Option Type</label>
+                            <select class="form-select form-select-sm" data-field="option_type">
+                                <option value="call" ${position.option_type === 'call' ? 'selected' : ''}>Call</option>
+                                <option value="put" ${position.option_type === 'put' ? 'selected' : ''}>Put</option>
+                            </select>
+                            <div class="field-help">Call растёт в цене при росте базового актива, Put — при падении.</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Underlying ID</label>
+                            <select class="form-select form-select-sm" data-field="underlying_id">
+                                ${STRESS_UNDERLYING_OPTIONS.map(option => `<option value="${option}" ${position.underlying_id === option ? 'selected' : ''}>${option}</option>`).join('')}
+                            </select>
+                            <div class="field-help">Группирует позиции по одному базовому активу, чтобы задать общий shock.</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Spot</label>
+                            <input type="number" class="form-control form-control-sm" data-field="spot" value="${escapeHtml(String(position.spot))}" step="0.01">
+                            <div class="field-help">Текущая цена базового актива до стресс-сценария.</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Strike</label>
+                            <input type="number" class="form-control form-control-sm" data-field="strike" value="${escapeHtml(String(position.strike))}" step="0.01">
+                            <div class="field-help">Цена исполнения опциона.</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Maturity (Years)</label>
+                            <input type="number" class="form-control form-control-sm" data-field="maturity_years" value="${escapeHtml(String(position.maturity_years))}" step="0.01">
+                            <div class="field-help">Сколько лет осталось до экспирации.</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Rate</label>
+                            <input type="number" class="form-control form-control-sm" data-field="rate" value="${escapeHtml(String(position.rate))}" step="0.0001">
+                            <div class="field-help">Безрисковая ставка для переоценки позиции.</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Volatility</label>
+                            <input type="number" class="form-control form-control-sm" data-field="volatility" value="${escapeHtml(String(position.volatility))}" step="0.001">
+                            <div class="field-help">Базовая волатильность до шока.</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Dividend Yield</label>
+                            <input type="number" class="form-control form-control-sm" data-field="dividend_yield" value="${escapeHtml(String(position.dividend_yield ?? 0))}" step="0.0001">
+                            <div class="field-help">Дивидендная доходность базового актива. Если не нужно, оставьте 0.</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Quantity</label>
+                            <input type="number" class="form-control form-control-sm" data-field="quantity" value="${escapeHtml(String(position.quantity))}" step="1">
+                            <div class="field-help">Количество контрактов в этой позиции.</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Multiplier</label>
+                            <input type="number" class="form-control form-control-sm" data-field="multiplier" value="${escapeHtml(String(position.multiplier))}" step="1">
+                            <div class="field-help">Размер одного контракта. Если не уверены, оставьте 1.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
+
+        const renderStressProPositions = (positions = null) => {
+            const container = document.getElementById('stress-pro-positions');
+            if (!container) return;
+
+            const nextPositions = positions && positions.length > 0 ? positions : [defaultStressPosition()];
+            container.innerHTML = nextPositions.map((position, index) => buildStressPositionCard(position, index)).join('');
+            applyStressProPreset(false);
+        };
+
+        const applyStressProPreset = (overwriteExisting = true) => {
+            const presetKey = document.getElementById('st-pro-preset')?.value || 'market_minus_10';
+            const preset = SIMPLE_STRESS_PRESETS[presetKey];
+            const currentShockValues = Object.fromEntries(
+                Array.from(document.querySelectorAll('.stress-shock-input')).map((input) => [input.dataset.underlyingId, parseDecimal(input.value, 0)])
+            );
+
+            if (preset && overwriteExisting) {
+                document.getElementById('st-vol-shift').value = String(preset.volShift);
+                document.getElementById('st-rate-shift').value = String(preset.rateShift);
+            }
+
+            const shockValues = {};
+            const positions = getStressProPositions();
+            [...new Set(positions.map(position => position.underlying_id))].forEach((underlyingId) => {
+                if (preset && presetKey !== 'custom') {
+                    shockValues[underlyingId] = preset.shocks[underlyingId] ?? Object.values(preset.shocks)[0] ?? 0;
+                } else {
+                    shockValues[underlyingId] = currentShockValues[underlyingId] ?? 0;
+                }
+            });
+
+            renderStressShocks(shockValues);
+        };
+
+        const collectStressProPayload = () => {
+            const positions = getStressProPositions();
+            const underlyingReturnShocks = Object.fromEntries(
+                Array.from(document.querySelectorAll('.stress-shock-input')).map((input) => [input.dataset.underlyingId, parseDecimal(input.value, 0)])
+            );
+
+            return {
+                positions,
+                horizon_days: parseDecimal(document.getElementById('st-horizon-days').value),
+                underlying_return_shocks: underlyingReturnShocks,
+                volatility_shift: parseDecimal(document.getElementById('st-vol-shift').value, 0),
+                rate_shift: parseDecimal(document.getElementById('st-rate-shift').value, 0),
+            };
+        };
 
         const moexState = {
             instruments: [],
@@ -1113,15 +1686,61 @@
             candles: [],
             candleSecid: null,
             historicalPrices: [],
+            selectedInstrument: null,
         };
 
         let portfolioItems = [];
         let currentMode = 'tinkoff';
+        let currentExperienceMode = localStorage.getItem('risk-ui-mode') || 'novice';
+
+        const setInlineFeedback = (id, message, type = 'danger', title = 'Что-то пошло не так') => {
+            const node = document.getElementById(id);
+            if (!node) return;
+            node.className = `alert alert-${type} inline-feedback show`;
+            node.innerHTML = `<strong>${escapeHtml(title)}</strong><div>${escapeHtml(message)}</div>`;
+        };
+
+        const clearInlineFeedback = (id) => {
+            const node = document.getElementById(id);
+            if (!node) return;
+            node.className = 'alert alert-danger inline-feedback';
+            node.innerHTML = '';
+        };
+
+        const clearAllInlineFeedback = () => [
+            'single-feedback',
+            'portfolio-feedback',
+            'moex-feedback',
+            'option-feedback',
+            'forward-feedback',
+            'option-var-feedback',
+            'backtest-feedback',
+            'risk-attribution-feedback',
+            'stress-feedback',
+        ].forEach(clearInlineFeedback);
+
+        const apiRequest = async (url, options = {}, fallback = 'Request failed.') => {
+            const response = await fetch(url, options);
+            let payload = null;
+            try {
+                payload = await response.json();
+            } catch (_error) {
+                payload = null;
+            }
+
+            if (!response.ok) {
+                throw new Error(payload?.detail || payload?.error || fallback);
+            }
+            if (payload && payload.error) {
+                throw new Error(payload.error);
+            }
+            return payload;
+        };
 
         const setStatusStrip = (id, title, body) => {
             const node = document.getElementById(id);
             if (!node) return;
-            node.innerHTML = `<strong>${escapeHtml(title)}</strong>${escapeHtml(body)}`;
+            node.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(body)}</span>`;
         };
 
         const setResultCards = (id, metrics) => {
@@ -1135,8 +1754,128 @@
                 { label: 'Last Close', value: safeNumber(lastClose, 4) },
                 { label: 'Daily Mu', value: safeNumber(mu, 6) },
                 { label: 'Daily Sigma', value: safeNumber(sigma, 6) },
-                { label: 'Observations', value: observations === null ? 'вЂ”' : String(observations) },
+                { label: 'Observations', value: observations === null ? '--' : String(observations) },
             ]);
+        };
+
+        const applySingleRiskPreset = () => {
+            const preset = RISK_PRESETS[document.getElementById('single-risk-preset').value] || RISK_PRESETS.base;
+            document.getElementById('confidence').value = String(preset.confidence);
+            document.getElementById('liquidationDays').value = String(preset.liquidationDays);
+            document.getElementById('spreadPercent').value = preset.spreadPercent.toFixed(2);
+        };
+
+        const getPortfolioConfidence = () => {
+            const presetKey = document.getElementById('portfolio-risk-preset').value;
+            return (RISK_PRESETS[presetKey] || RISK_PRESETS.base).confidence;
+        };
+
+        const applyExperienceMode = (mode) => {
+            currentExperienceMode = mode;
+            localStorage.setItem('risk-ui-mode', mode);
+
+            document.getElementById('noviceModeBtn').classList.toggle('active', mode === 'novice');
+            document.getElementById('proModeBtn').classList.toggle('active', mode === 'pro');
+
+            document.querySelectorAll('.ui-pro-nav').forEach(node => node.classList.toggle('mode-hidden', mode !== 'pro'));
+            document.querySelectorAll('.ui-pro-pane').forEach(node => node.classList.toggle('mode-hidden', mode !== 'pro'));
+            document.querySelectorAll('.pro-only').forEach(node => node.classList.toggle('mode-hidden', mode !== 'pro'));
+            document.querySelectorAll('.novice-only').forEach(node => node.classList.toggle('mode-hidden', mode !== 'novice'));
+
+            if (mode !== 'pro') {
+                const activeProTab = PRO_TAB_PANE_IDS.some(id => document.getElementById(id).classList.contains('active'));
+                if (activeProTab) {
+                    bootstrap.Tab.getOrCreateInstance(document.getElementById('single-tab')).show();
+                }
+            }
+
+            const moexTitle = mode === 'novice' ? 'Быстрый MOEX-поток' : 'MOEX data hub';
+            const moexBody = mode === 'novice'
+                ? 'Выберите рынок, инструмент и период. Мы подтянем историю и обновим доступные параметры.'
+                : 'Загрузите instrument list, option board или candles и передавайте данные в деривативные экраны.';
+            setStatusStrip('moex-workflow-output', moexTitle, moexBody);
+        };
+
+        const confidenceToZ = (confidence) => {
+            const normalized = Number(confidence);
+            const known = {
+                0.90: 1.2815515655,
+                0.95: 1.6448536269,
+                0.975: 1.9599639845,
+                0.99: 2.3263478740,
+            };
+            const matched = Object.entries(known).find(([key]) => Math.abs(Number(key) - normalized) < 1e-9);
+            return matched ? matched[1] : known[0.95];
+        };
+
+        const verdictLabel = (verdict) => {
+            const normalized = String(verdict || '').toLowerCase();
+            if (normalized === 'green') return 'Green';
+            if (normalized === 'yellow') return 'Yellow';
+            if (normalized === 'red') return 'Red';
+            return '--';
+        };
+
+        const verdictBadge = (verdict) => {
+            const normalized = String(verdict || '').toLowerCase();
+            const badgeClass = normalized === 'green'
+                ? 'bg-success'
+                : normalized === 'yellow'
+                    ? 'bg-warning text-dark'
+                    : normalized === 'red'
+                        ? 'bg-danger'
+                        : 'bg-secondary';
+            return `<span class="badge ${badgeClass}">${escapeHtml(verdictLabel(verdict))}</span>`;
+        };
+
+        const toggleOptionSeedInput = () => {
+            const useFixedSeed = document.getElementById('ovar-use-fixed-seed').checked;
+            const seedInput = document.getElementById('ovar-seed');
+            seedInput.disabled = !useFixedSeed;
+            seedInput.classList.toggle('bg-light', !useFixedSeed);
+        };
+
+        const buildStressResultTable = (data) => renderSimpleTable(
+            (data.scenarios || []).map(item => ({
+                name: item.name,
+                base_value: safeNumber(item.base_value, 4),
+                stressed_value: safeNumber(item.stressed_value, 4),
+                total_pnl: safeNumber(item.total_pnl, 4),
+                positions: item.positions ? item.positions.length : 0,
+            })),
+            [
+                { key: 'name', label: 'Scenario' },
+                { key: 'base_value', label: 'Base Value' },
+                { key: 'stressed_value', label: 'Stressed Value' },
+                { key: 'total_pnl', label: 'PnL' },
+                { key: 'positions', label: 'Positions' },
+            ]
+        ) + renderRawDetails(data);
+
+        const buildSimpleStressPayload = () => {
+            const presetKey = document.getElementById('st-simple-preset').value;
+            const preset = SIMPLE_STRESS_PRESETS[presetKey] || SIMPLE_STRESS_PRESETS.market_minus_10;
+            return {
+                positions: [
+                    {
+                        spot: getNumericValue('st-simple-spot'),
+                        strike: getNumericValue('st-simple-strike'),
+                        maturity_years: getNumericValue('st-simple-maturity'),
+                        rate: getNumericValue('st-simple-rate'),
+                        volatility: getNumericValue('st-simple-volatility'),
+                        dividend_yield: 0.0,
+                        quantity: getNumericValue('st-simple-quantity'),
+                        multiplier: getNumericValue('st-simple-multiplier'),
+                        underlying_id: 'U1',
+                        option_type: document.getElementById('st-simple-option-type').value,
+                    }
+                ],
+                horizon_days: getNumericValue('st-simple-horizon-days'),
+                underlying_return_shocks: preset.shocks,
+                volatility_shift: preset.volShift,
+                rate_shift: preset.rateShift,
+                preset_name: preset.name,
+            };
         };
 
         const copyOptionInputsToRisk = () => {
@@ -1156,12 +1895,24 @@
             );
         };
 
+        const updateSelectedMoexInstrument = (instrument) => {
+            moexState.selectedInstrument = instrument;
+            document.getElementById('moex-secid').value = instrument.SECID || '';
+            const selectionNode = document.getElementById('moex-selected-security-label');
+            if (selectionNode) {
+                selectionNode.innerHTML = `
+                    <strong>${escapeHtml(instrument.SECID || 'Инструмент выбран')}</strong>
+                    <span>${escapeHtml(instrument.SHORTNAME || 'Теперь можно загрузить историю цен.')}</span>
+                `;
+            }
+        };
+
         const applyInstrumentToForward = (payload) => {
             const instrument = typeof payload === 'string' ? JSON.parse(payload) : payload;
             const spot = valueOrFallback(instrument.PREVPRICE, instrument.LAST, instrument.LAST_PRICE);
             const lot = valueOrFallback(instrument.LOTSIZE, 1) ?? 1;
 
-            document.getElementById('moex-secid').value = instrument.SECID || '';
+            updateSelectedMoexInstrument(instrument);
             if (spot !== null) {
                 document.getElementById('fp-spot').value = spot;
                 if (!document.getElementById('fp-entry-price').value) {
@@ -1180,7 +1931,9 @@
             setStatusStrip(
                 'moex-workflow-output',
                 `Selected ${instrument.SECID || 'instrument'}`,
-                'You can now load candles for this SECID or continue directly to Futures & SPFI.'
+                currentExperienceMode === 'novice'
+                    ? 'Теперь загрузите историю, чтобы автоматически получить цену и волатильность.'
+                    : 'You can now load candles for this SECID or continue directly to Futures & SPFI.'
             );
         };
 
@@ -1260,7 +2013,9 @@
             setStatusStrip(
                 'moex-workflow-output',
                 `Loaded candles for ${secid}`,
-                'Last close, daily mean return, and daily volatility were copied into the derivatives inputs.'
+                currentExperienceMode === 'novice'
+                    ? 'Цена, средняя дневная доходность и дневная волатильность обновлены.'
+                    : 'Last close, daily mean return, and daily volatility were copied into the derivatives inputs.'
             );
         };
 
@@ -1269,17 +2024,23 @@
             btn.addEventListener('shown.bs.tab', e => currentMode = e.target.id.replace('-tab', ''));
         });
 
+        document.getElementById('instrumentName').addEventListener('input', () => {
+            document.getElementById('figi').value = '';
+            document.getElementById('selectedInstrument').classList.add('d-none');
+            document.getElementById('selectedInstrument').innerText = '';
+        });
+
         document.getElementById('searchBtn').addEventListener('click', async () => {
             const query = document.getElementById('instrumentName').value;
             if(!query) return;
             showLoading();
             try {
-                const res = await fetch(`/api/search?query=${query}`);
-                const data = await res.json();
+                clearInlineFeedback('single-feedback');
+                const data = await apiRequest(`/api/search?query=${encodeURIComponent(query)}`, {}, 'Не удалось найти инструмент.');
                 const list = document.getElementById('searchResults');
                 list.innerHTML = '';
                 if (data.length === 0) {
-                    list.innerHTML = '<div class="list-group-item text-danger">No instruments found.</div>';
+                    list.innerHTML = '<div class="list-group-item text-danger">Ничего не найдено.</div>';
                     return;
                 }
                 data.forEach(item => {
@@ -1294,31 +2055,38 @@
                     };
                     list.appendChild(btn);
                 });
-            } catch (e) { alert("Error searching instrument: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('single-feedback', e.message, 'danger', 'Не удалось выполнить поиск');
+            } finally { hideLoading(); }
         });
 
         document.getElementById('calculateBtn').addEventListener('click', async () => {
             showLoading();
             try {
+                clearInlineFeedback('single-feedback');
+                const instrumentQuery = document.getElementById('instrumentName').value.trim();
+                if (currentMode === 'tinkoff' && !document.getElementById('figi').value && !instrumentQuery) {
+                    setInlineFeedback('single-feedback', 'Введите тикер или выберите инструмент из списка перед расчётом.', 'warning', 'Не выбран инструмент');
+                    return;
+                }
                 const payload = {
                     mode: currentMode,
-                    confidence: parseFloat(document.getElementById('confidence').value),
-                    position_size: parseFloat(document.getElementById('positionSize').value),
-                    spread_percent: parseFloat(document.getElementById('spreadPercent').value),
-                    liquidation_days: parseInt(document.getElementById('liquidationDays').value),
+                    confidence: getNumericValue('confidence'),
+                    position_size: getNumericValue('positionSize'),
+                    spread_percent: getNumericValue('spreadPercent'),
+                    liquidation_days: getNumericValue('liquidationDays'),
                     start_date: document.getElementById('startDate').value,
                     end_date: document.getElementById('endDate').value,
                     figi: document.getElementById('figi').value,
+                    instrument_query: instrumentQuery,
                     manual_prices: document.getElementById('manualPrices').value
                 };
 
-                const res = await fetch('/api/calculate', {
+                const data = await apiRequest('/api/calculate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data.error) throw new Error(data.error);
+                }, 'Не удалось рассчитать риск.');
 
                 document.getElementById('results').classList.remove('d-none');
                 document.getElementById('results-placeholder').classList.add('d-none');
@@ -1331,11 +2099,12 @@
                     document.getElementById('res-lvar-stress').innerText = fmtCurrency(data.lvar.lvar_stressed);
                 }
 
-                const bt = data.backtest;
-                const btColor = bt.verdict === 'Green' ? 'success' : (bt.verdict === 'Yellow' ? 'warning' : 'danger');
-                document.getElementById('backtest-body').innerHTML = `
-                    <div class="alert alert-${btColor} mb-0 py-2">
-                        <strong>Backtest: ${bt.verdict}</strong>. Failures: ${bt.exceptions}/${bt.total_observations} (p=${bt.p_value.toFixed(3)})
+                const riskStatus = data.risk_status || { severity: 'secondary', label: 'Статус недоступен', loss_share_pct: 0, summary: 'Проверьте входные параметры.' };
+                const riskColor = riskStatus.severity === 'green' ? 'success' : (riskStatus.severity === 'yellow' ? 'warning' : 'danger');
+                document.getElementById('single-risk-status').innerHTML = `
+                    <div class="alert alert-${riskColor} mb-0 py-2">
+                        <strong>${escapeHtml(riskStatus.label)}</strong>. Это около ${safeNumber(riskStatus.loss_share_pct, 2)}% от размера позиции.
+                        <div class="small mt-1">${escapeHtml(riskStatus.summary || '')}</div>
                     </div>`;
 
                 if (data.candles && data.candles.length > 0) {
@@ -1354,9 +2123,11 @@
                     }, {responsive: true});
                 } else {
                     Plotly.purge('chartContainer');
-                    document.getElementById('chartContainer').innerHTML = '<p class="text-muted text-center mt-3">No chart data available.</p>';
+                    document.getElementById('chartContainer').innerHTML = '<p class="text-muted text-center mt-3">История не доступна для графика.</p>';
                 }
-            } catch (e) { alert("Error calculating risk: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('single-feedback', e.message, 'danger', 'Не удалось рассчитать риск');
+            } finally { hideLoading(); }
         });
 
         // --- PORTFOLIO ---
@@ -1365,12 +2136,12 @@
             if(!query) return;
             showLoading();
             try {
-                const res = await fetch(`/api/search?query=${query}`);
-                const data = await res.json();
+                clearInlineFeedback('portfolio-feedback');
+                const data = await apiRequest(`/api/search?query=${encodeURIComponent(query)}`, {}, 'Не удалось найти инструмент.');
                 const list = document.getElementById('port-search-results');
                 list.innerHTML = '';
                 if (!data || data.length === 0) {
-                    list.innerHTML = '<div class="list-group-item list-group-item-warning">No instruments found.</div>';
+                    list.innerHTML = '<div class="list-group-item list-group-item-warning">Ничего не найдено.</div>';
                     return;
                 }
                 data.forEach(item => {
@@ -1384,7 +2155,9 @@
                     };
                     list.appendChild(btn);
                 });
-            } catch (e) { alert("Error searching portfolio instrument: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('portfolio-feedback', e.message, 'danger', 'Не удалось выполнить поиск');
+            } finally { hideLoading(); }
         });
 
         function addPortfolioItem(item) {
@@ -1403,13 +2176,13 @@
                 tr.innerHTML = `
                     <td><div class="fw-bold">${item.ticker}</div></td>
                     <td><input type="number" class="form-control form-control-sm weight-input" data-idx="${idx}" value="${item.weight}" step="0.1" min="0" max="1"></td>
-                    <td class="text-end"><button class="btn btn-link text-danger btn-sm p-0" onclick="removePortItem(${idx})">Remove</button></td>
+                    <td class="text-end"><button class="btn btn-link text-danger btn-sm p-0" onclick="removePortItem(${idx})">Убрать</button></td>
                 `;
                 tbody.appendChild(tr);
             });
             document.querySelectorAll('.weight-input').forEach(inp => {
                 inp.addEventListener('change', (e) => {
-                    portfolioItems[e.target.dataset.idx].weight = parseFloat(e.target.value);
+                    portfolioItems[e.target.dataset.idx].weight = parseDecimal(e.target.value, 0);
                     renderPortfolioTable();
                 });
             });
@@ -1423,21 +2196,23 @@
         };
 
         document.getElementById('calc-portfolio-btn').addEventListener('click', async () => {
-            if (portfolioItems.length < 2) { alert("Add at least 2 assets to portfolio."); return; }
+            if (portfolioItems.length < 2) {
+                setInlineFeedback('portfolio-feedback', 'Добавьте хотя бы 2 актива, чтобы оценить риск портфеля.', 'warning', 'Недостаточно активов');
+                return;
+            }
             showLoading();
             try {
+                clearInlineFeedback('portfolio-feedback');
                 const payload = {
                     items: portfolioItems.map(i => ({figi: i.figi, ticker: i.ticker, weight: i.weight})),
                     start_date: document.getElementById('port-start').value,
                     end_date: document.getElementById('port-end').value,
-                    confidence: 0.95,
+                    confidence: getPortfolioConfidence(),
                     portfolio_value: 100000
                 };
-                const res = await fetch('/api/calculate_portfolio', {
+                const data = await apiRequest('/api/calculate_portfolio', {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data.error) throw new Error(data.error);
+                }, 'Не удалось рассчитать риск портфеля.');
 
                 document.getElementById('port-results').classList.remove('d-none');
                 document.getElementById('port-placeholder').classList.add('d-none');
@@ -1513,7 +2288,9 @@
                     showlegend: false
                 }, {responsive: true});
 
-            } catch (e) { alert("Error analyzing portfolio: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('portfolio-feedback', e.message, 'danger', 'Не удалось рассчитать портфель');
+            } finally { hideLoading(); }
         });
 
         // --- MOEX DATA ---
@@ -1522,11 +2299,14 @@
             if (!button) return;
             const payload = JSON.parse(button.dataset.payload);
 
+            if (button.dataset.action === 'select-instrument') {
+                applyInstrumentToForward(payload);
+            }
             if (button.dataset.action === 'use-forward') {
                 applyInstrumentToForward(payload);
             }
             if (button.dataset.action === 'use-candles') {
-                document.getElementById('moex-secid').value = payload.SECID || '';
+                updateSelectedMoexInstrument(payload);
                 setStatusStrip('moex-workflow-output', `SECID ${payload.SECID || ''} copied`, 'Load candles next to derive spot, mu, and sigma.');
             }
         });
@@ -1547,49 +2327,87 @@
             }
         });
 
-        document.getElementById('getMoexInstrumentsBtn').addEventListener('click', async () => {
-            showLoading();
-            try {
-                const engine = document.getElementById('moex-engine').value;
-                const market = document.getElementById('moex-market').value;
-                const res = await fetch(`/api/moex/instruments?engine=${engine}&market=${market}`);
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || data.error || 'Failed to fetch instruments.');
-
-                moexState.instruments = data;
-                document.getElementById('moex-instruments-output').innerHTML = renderSimpleTable(
-                    data.slice(0, 50),
+        const renderMoexInstrumentTable = (rows) => {
+            if (currentExperienceMode === 'novice') {
+                return renderSimpleTable(
+                    rows.slice(0, 30),
                     [
-                        { key: 'SECID', label: 'SECID' },
-                        { key: 'SHORTNAME', label: 'Name' },
-                        { key: 'LOTSIZE', label: 'Lot' },
-                        { key: 'MINSTEP', label: 'Step', render: v => safeNumber(v, 4) },
-                        { key: 'PREVPRICE', label: 'Prev Price', render: v => safeNumber(v, 4) },
-                        { key: 'ASSETCODE', label: 'Base Asset' },
+                        { key: 'SECID', label: 'Тикер' },
+                        { key: 'SHORTNAME', label: 'Название' },
+                        { key: 'PREVPRICE', label: 'Цена', render: v => safeNumber(v, 4) },
                         {
                             key: 'actions',
-                            label: 'Actions',
+                            label: 'Действие',
                             html: true,
                             render: (_, row) => buildActionButtons([
-                                { label: 'To Futures', action: 'use-forward', payload: row },
-                                { label: 'Set SECID', action: 'use-candles', payload: row },
+                                { label: 'Выбрать', action: 'select-instrument', payload: row },
                             ]),
                         },
                     ]
-                ) + `<p class="soft-note mt-2">Showing first ${Math.min(data.length, 50)} instruments out of ${data.length}.</p>`;
+                ) + `<p class="soft-note mt-2">Показаны первые ${Math.min(rows.length, 30)} инструментов из ${rows.length}.</p>`;
+            }
 
-                setStatusStrip('moex-workflow-output', `Loaded ${data.length} instruments`, 'Choose a row to populate Futures & SPFI or the candle loader.');
-            } catch (e) { alert("Error fetching MOEX instruments: " + e.message); } finally { hideLoading(); }
-        });
+            return renderSimpleTable(
+                rows.slice(0, 50),
+                [
+                    { key: 'SECID', label: 'SECID' },
+                    { key: 'SHORTNAME', label: 'Name' },
+                    { key: 'LOTSIZE', label: 'Lot' },
+                    { key: 'MINSTEP', label: 'Step', render: v => safeNumber(v, 4) },
+                    { key: 'PREVPRICE', label: 'Prev Price', render: v => safeNumber(v, 4) },
+                    { key: 'ASSETCODE', label: 'Base Asset' },
+                    {
+                        key: 'actions',
+                        label: 'Actions',
+                        html: true,
+                        render: (_, row) => buildActionButtons([
+                            { label: 'To Futures', action: 'use-forward', payload: row },
+                            { label: 'Set SECID', action: 'use-candles', payload: row },
+                        ]),
+                    },
+                ]
+            ) + `<p class="soft-note mt-2">Showing first ${Math.min(rows.length, 50)} instruments out of ${rows.length}.</p>`;
+        };
+
+        const loadMoexInstruments = async () => {
+            showLoading();
+            try {
+                clearInlineFeedback('moex-feedback');
+                if (currentExperienceMode === 'novice') {
+                    const simpleMarketKey = document.getElementById('moex-simple-market').value;
+                    const simpleConfig = MOEX_SIMPLE_MARKETS[simpleMarketKey] || MOEX_SIMPLE_MARKETS.shares;
+                    document.getElementById('moex-engine').value = simpleConfig.engine;
+                    document.getElementById('moex-market').value = simpleConfig.market;
+                }
+                const engine = document.getElementById('moex-engine').value;
+                const market = document.getElementById('moex-market').value;
+                const data = await apiRequest(`/api/moex/instruments?engine=${engine}&market=${market}`, {}, 'Не удалось загрузить список инструментов MOEX.');
+
+                moexState.instruments = data;
+                document.getElementById('moex-instruments-output').innerHTML = renderMoexInstrumentTable(data);
+
+                const statusBody = currentExperienceMode === 'novice'
+                    ? 'Выберите строку, затем загрузите историю и получите автозаполнение параметров.'
+                    : 'Choose a row to populate Futures & SPFI or the candle loader.';
+                setStatusStrip('moex-workflow-output', `Loaded ${data.length} instruments`, statusBody);
+            } catch (e) {
+                setInlineFeedback('moex-feedback', e.message, 'danger', 'Не удалось загрузить данные MOEX');
+            } finally { hideLoading(); }
+        };
+
+        document.getElementById('getMoexInstrumentsBtn').addEventListener('click', loadMoexInstruments);
+        document.getElementById('getMoexInstrumentsSimpleBtn').addEventListener('click', loadMoexInstruments);
 
         document.getElementById('getMoexOptionBoardBtn').addEventListener('click', async () => {
             showLoading();
             try {
+                clearInlineFeedback('moex-feedback');
                 const underlying = document.getElementById('moex-underlying').value;
-                if (!underlying) { alert("Please enter an underlying asset code."); return; }
-                const res = await fetch(`/api/moex/option_board/${underlying}`);
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || data.error || 'Failed to fetch option board.');
+                if (!underlying) {
+                    setInlineFeedback('moex-feedback', 'Введите код базового актива, например SBER или Si.', 'warning', 'Нужен базовый актив');
+                    return;
+                }
+                const data = await apiRequest(`/api/moex/option_board/${underlying}`, {}, 'Не удалось загрузить option board.');
 
                 moexState.optionBoard = data;
                 document.getElementById('moex-option-board-output').innerHTML = renderSimpleTable(
@@ -1615,24 +2433,28 @@
                 ) + `<p class="soft-note mt-2">Showing first ${Math.min(data.length, 60)} rows for ${escapeHtml(underlying.toUpperCase())}.</p>`;
 
                 setStatusStrip('moex-workflow-output', `Loaded option board for ${underlying.toUpperCase()}`, 'Choose a contract row to send its strike, type, maturity, and spot into the option screens.');
-            } catch (e) { alert("Error fetching MOEX option board: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('moex-feedback', e.message, 'danger', 'Не удалось загрузить option board');
+            } finally { hideLoading(); }
         });
 
         document.getElementById('getMoexCandlesBtn').addEventListener('click', async () => {
             showLoading();
             try {
+                clearInlineFeedback('moex-feedback');
                 const secid = document.getElementById('moex-secid').value;
                 const startDate = document.getElementById('moex-start-date').value;
                 const endDate = document.getElementById('moex-end-date').value;
-                if (!secid || !startDate || !endDate) { alert("Please fill all fields for MOEX Candles."); return; }
+                if (!secid || !startDate || !endDate) {
+                    setInlineFeedback('moex-feedback', 'Выберите инструмент и укажите период, чтобы загрузить историю.', 'warning', 'Не хватает параметров');
+                    return;
+                }
 
-                const res = await fetch('/api/moex/candles', {
+                const data = await apiRequest('/api/moex/candles', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ secid, start_date: startDate, end_date: endDate })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || data.error || 'Failed to fetch candles.');
+                }, 'Не удалось загрузить историю MOEX.');
 
                 if (data && data.length > 0) {
                     const trace = {
@@ -1654,7 +2476,9 @@
                     document.getElementById('moexCandlesChart').innerHTML = '<p class="text-muted text-center mt-3">No chart data available.</p>';
                     updateMoexCandleCards();
                 }
-            } catch (e) { alert("Error fetching MOEX candles: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('moex-feedback', e.message, 'danger', 'Не удалось загрузить историю');
+            } finally { hideLoading(); }
         });
 
         // --- OPTION PRICING & GREEKS ---
@@ -1665,25 +2489,24 @@
         document.getElementById('calculateOptionBtn').addEventListener('click', async () => {
             showLoading();
             try {
+                clearInlineFeedback('option-feedback');
                 const payload = {
                     option_type: document.getElementById('op-type').value,
-                    spot: parseFloat(document.getElementById('op-spot').value),
-                    strike: parseFloat(document.getElementById('op-strike').value),
-                    maturity_years: parseFloat(document.getElementById('op-maturity').value),
-                    rate: parseFloat(document.getElementById('op-rate').value),
-                    volatility: parseFloat(document.getElementById('op-volatility').value),
-                    dividend_yield: parseFloat(document.getElementById('op-dividend').value),
-                    quantity: parseFloat(document.getElementById('op-quantity').value),
-                    multiplier: parseFloat(document.getElementById('op-multiplier').value),
+                    spot: getNumericValue('op-spot'),
+                    strike: getNumericValue('op-strike'),
+                    maturity_years: getNumericValue('op-maturity'),
+                    rate: getNumericValue('op-rate'),
+                    volatility: getNumericValue('op-volatility'),
+                    dividend_yield: getNumericValue('op-dividend'),
+                    quantity: getNumericValue('op-quantity'),
+                    multiplier: getNumericValue('op-multiplier'),
                 };
 
-                const res = await fetch('/api/option_pricing', {
+                const data = await apiRequest('/api/option_pricing', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || data.error || 'Failed to price option.');
+                }, 'Не удалось рассчитать цену опциона.');
 
                 const scale = payload.quantity * payload.multiplier;
                 document.getElementById('op-res-price').innerText = fmtNumber(data.price);
@@ -1702,34 +2525,35 @@
                     { label: 'Position Theta', value: safeNumber(data.theta * scale, 4) },
                 ]);
                 setStatusStrip('option-context-output', 'Option priced successfully', 'Use the copy button to send the same contract into Option Risk.');
-            } catch (e) { alert("Error calculating option price & Greeks: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('option-feedback', e.message, 'danger', 'Не удалось рассчитать цену и Greeks');
+            } finally { hideLoading(); }
         });
 
         // --- FUTURES / SPFI ---
         document.getElementById('calculateForwardBtn').addEventListener('click', async () => {
             showLoading();
             try {
+                clearInlineFeedback('forward-feedback');
                 const entryPriceRaw = document.getElementById('fp-entry-price').value;
                 const scenarioSpotRaw = document.getElementById('fp-scenario-spot').value;
                 const payload = {
                     instrument_type: document.getElementById('fp-type').value,
-                    spot: parseFloat(document.getElementById('fp-spot').value),
-                    entry_price: entryPriceRaw === '' ? null : parseFloat(entryPriceRaw),
-                    maturity_years: parseFloat(document.getElementById('fp-maturity').value),
-                    rate: parseFloat(document.getElementById('fp-rate').value),
-                    income_yield: parseFloat(document.getElementById('fp-income-yield').value),
-                    quantity: parseFloat(document.getElementById('fp-quantity').value),
-                    multiplier: parseFloat(document.getElementById('fp-multiplier').value),
-                    scenario_spot: scenarioSpotRaw === '' ? null : parseFloat(scenarioSpotRaw),
+                    spot: getNumericValue('fp-spot'),
+                    entry_price: entryPriceRaw === '' ? null : parseDecimal(entryPriceRaw),
+                    maturity_years: getNumericValue('fp-maturity'),
+                    rate: getNumericValue('fp-rate'),
+                    income_yield: getNumericValue('fp-income-yield'),
+                    quantity: getNumericValue('fp-quantity'),
+                    multiplier: getNumericValue('fp-multiplier'),
+                    scenario_spot: scenarioSpotRaw === '' ? null : parseDecimal(scenarioSpotRaw),
                 };
 
-                const res = await fetch('/api/forward_pricing', {
+                const data = await apiRequest('/api/forward_pricing', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || data.error || 'Failed to price linear derivative.');
+                }, 'Не удалось рассчитать линейный дериватив.');
 
                 document.getElementById('fp-res-fair-price').innerText = safeNumber(data.fair_price, 4);
                 document.getElementById('fp-res-carry').innerText = safeNumber(data.carry, 4);
@@ -1756,35 +2580,36 @@
                     ]
                 ) + renderRawDetails(data);
                 setStatusStrip('forward-context-output', `Priced ${data.instrument_type}`, 'Use the same spot and size in the Linear Risk block below.');
-            } catch (e) { alert("Error calculating futures / SPFI pricing: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('forward-feedback', e.message, 'danger', 'Не удалось рассчитать pricing');
+            } finally { hideLoading(); }
         });
 
         document.getElementById('calculateForwardRiskBtn').addEventListener('click', async () => {
             showLoading();
             try {
-                const muRaw = parseFloat(document.getElementById('fpvar-mu').value);
-                const sigmaRaw = parseFloat(document.getElementById('fpvar-sigma').value);
-                const scenarioMoveRaw = parseFloat(document.getElementById('fpvar-scenario-move').value);
+                clearInlineFeedback('forward-feedback');
+                const muRaw = getNumericValue('fpvar-mu');
+                const sigmaRaw = getNumericValue('fpvar-sigma');
+                const scenarioMoveRaw = getNumericValue('fpvar-scenario-move');
                 const payload = {
                     instrument_type: document.getElementById('fp-type').value,
-                    spot: parseFloat(document.getElementById('fp-spot').value),
-                    quantity: parseFloat(document.getElementById('fp-quantity').value),
-                    multiplier: parseFloat(document.getElementById('fp-multiplier').value),
-                    confidence: parseFloat(document.getElementById('fpvar-confidence').value),
-                    horizon_days: parseInt(document.getElementById('fpvar-horizon').value),
+                    spot: getNumericValue('fp-spot'),
+                    quantity: getNumericValue('fp-quantity'),
+                    multiplier: getNumericValue('fp-multiplier'),
+                    confidence: getNumericValue('fpvar-confidence'),
+                    horizon_days: getNumericValue('fpvar-horizon'),
                     mu_daily: Number.isNaN(muRaw) ? null : muRaw,
                     sigma_daily: Number.isNaN(sigmaRaw) ? null : sigmaRaw,
                     scenario_move_pct: Number.isNaN(scenarioMoveRaw) ? null : scenarioMoveRaw,
                     historical_prices: moexState.historicalPrices.length > 1 ? moexState.historicalPrices : null,
                 };
 
-                const res = await fetch('/api/linear_var', {
+                const data = await apiRequest('/api/linear_var', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || data.error || 'Failed to calculate linear risk.');
+                }, 'Не удалось рассчитать linear risk.');
 
                 document.getElementById('forward-risk-summary').innerHTML = renderMetricCards([
                     { label: 'Exposure Cash', value: safeNumber(data.exposure_cash, 4) },
@@ -1822,48 +2647,52 @@
                         { key: 'metric', label: 'Metric' },
                         { key: 'value', label: 'Value' },
                     ]) + renderRawDetails(data);
-            } catch (e) { alert("Error calculating linear derivative risk: " + e.message); } finally { hideLoading(); }
+                setStatusStrip('forward-context-output', 'Linear risk calculated', 'Parametric, historical and scenario risk are shown below for the same contract inputs.');
+            } catch (e) {
+                setInlineFeedback('forward-feedback', e.message, 'danger', 'Не удалось рассчитать риск');
+            } finally { hideLoading(); }
         });
 
         // --- OPTION VAR ---
         document.getElementById('calculateOptionVaRBtn').addEventListener('click', async () => {
             showLoading();
             try {
+                clearInlineFeedback('option-var-feedback');
                 const optionParams = {
                     option_type: document.getElementById('ovar-op-type').value,
-                    spot: parseFloat(document.getElementById('ovar-op-spot').value),
-                    strike: parseFloat(document.getElementById('ovar-op-strike').value),
-                    maturity_years: parseFloat(document.getElementById('ovar-op-maturity').value),
-                    rate: parseFloat(document.getElementById('ovar-op-rate').value),
-                    volatility: parseFloat(document.getElementById('ovar-op-volatility').value),
-                    dividend_yield: parseFloat(document.getElementById('ovar-op-dividend').value),
-                    quantity: parseFloat(document.getElementById('ovar-op-quantity').value),
-                    multiplier: parseFloat(document.getElementById('ovar-op-multiplier').value),
+                    spot: getNumericValue('ovar-op-spot'),
+                    strike: getNumericValue('ovar-op-strike'),
+                    maturity_years: getNumericValue('ovar-op-maturity'),
+                    rate: getNumericValue('ovar-op-rate'),
+                    volatility: getNumericValue('ovar-op-volatility'),
+                    dividend_yield: getNumericValue('ovar-op-dividend'),
+                    quantity: getNumericValue('ovar-op-quantity'),
+                    multiplier: getNumericValue('ovar-op-multiplier'),
                     underlying_id: 'U1',
                 };
 
-                const greeksRes = await fetch('/api/option_pricing', {
+                const greeksData = await apiRequest('/api/option_pricing', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(optionParams)
-                });
-                const greeksData = await greeksRes.json();
-                if (!greeksRes.ok) throw new Error(greeksData.detail || greeksData.error || 'Failed to price option for VaR.');
+                }, 'Не удалось переоценить опцион перед VaR.');
 
                 const scale = optionParams.quantity * optionParams.multiplier;
                 const spot = optionParams.spot;
                 const thetaDay = greeksData.theta * scale / 365.0;
-                const muDaily = parseFloat(document.getElementById('ovar-mu').value);
-                const sigmaDaily = parseFloat(document.getElementById('ovar-sigma').value);
-                const horizonDays = parseInt(document.getElementById('ovar-horizon').value);
-                const confidence = parseFloat(document.getElementById('ovar-confidence').value);
+                const muDaily = getNumericValue('ovar-mu');
+                const sigmaDaily = getNumericValue('ovar-sigma');
+                const horizonDays = getNumericValue('ovar-horizon');
+                const confidence = getNumericValue('ovar-confidence');
                 const includeTheta = document.getElementById('ovar-include-theta').checked;
                 const runFullRevaluation = document.getElementById('ovar-full-revaluation').checked;
-                const simulations = parseInt(document.getElementById('ovar-simulations').value);
+                const simulations = getNumericValue('ovar-simulations');
+                const useFixedSeed = document.getElementById('ovar-use-fixed-seed').checked;
+                const seedValue = parseDecimal(document.getElementById('ovar-seed').value);
                 const muHorizon = muDaily * horizonDays;
                 const sigmaHorizon = sigmaDaily * Math.sqrt(horizonDays);
                 const thetaHorizon = includeTheta ? thetaDay * horizonDays : 0.0;
-                const zValue = confidence === 0.99 ? 2.326 : 1.645;
+                const zValue = confidenceToZ(confidence);
                 const deltaCash = greeksData.delta * spot * scale;
                 const gammaCash = greeksData.gamma * (spot ** 2) * scale;
 
@@ -1875,24 +2704,22 @@
                     sigma_horizon: sigmaHorizon,
                     z_value: zValue,
                     simulations: simulations,
-                    seed: 42,
+                    seed: useFixedSeed && Number.isFinite(seedValue) ? seedValue : null,
                     confidence: confidence,
                     full_revaluation: runFullRevaluation,
                     horizon_days: horizonDays,
                     full_revaluation_position: optionParams,
-                    vol_mean_horizon: parseFloat(document.getElementById('ovar-vol-mean').value),
-                    vol_sigma_horizon: parseFloat(document.getElementById('ovar-vol-sigma').value),
-                    rate_mean_horizon: parseFloat(document.getElementById('ovar-rate-mean').value),
-                    rate_sigma_horizon: parseFloat(document.getElementById('ovar-rate-sigma').value),
+                    vol_mean_horizon: getNumericValue('ovar-vol-mean'),
+                    vol_sigma_horizon: getNumericValue('ovar-vol-sigma'),
+                    rate_mean_horizon: getNumericValue('ovar-rate-mean'),
+                    rate_sigma_horizon: getNumericValue('ovar-rate-sigma'),
                 };
 
-                const res = await fetch('/api/option_var', {
+                const data = await apiRequest('/api/option_var', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || data.error || 'Failed to calculate option VaR.');
+                }, 'Не удалось рассчитать Option VaR.');
 
                 document.getElementById('ovar-res-dn-var').innerText = fmtNumber(data.approximations.var_dn);
                 document.getElementById('ovar-res-dn-mu').innerText = fmtNumber(data.approximations.mu_dn);
@@ -1943,10 +2770,13 @@
                         { label: 'MC ES', value: safeNumber(data.mc_es, 4) },
                         { label: 'Cash Delta', value: safeNumber(deltaCash, 4) },
                         { label: 'Cash Gamma', value: safeNumber(gammaCash, 4) },
+                        { label: 'Seed Used', value: String(data.seed_used ?? '--') },
                     ]) + renderRawDetails({
                         approximations: data.approximations,
                         mc_var_details: data.mc_var_details,
                         mc_es_details: data.mc_es_details,
+                        seed_used: data.seed_used,
+                        seed_mode: data.seed_mode,
                     });
 
                 if (data.full_revaluation) {
@@ -1961,30 +2791,40 @@
                     document.getElementById('ovar-full-output').innerHTML = '<p class="soft-note mb-0">Full revaluation is disabled.</p>';
                 }
 
-                setStatusStrip('option-risk-context-output', 'Option risk calculated', 'Analytical approximations and simulated repricing are available together below.');
-            } catch (e) { alert("Error calculating Option VaR: " + e.message); } finally { hideLoading(); }
+                const seedText = data.seed_mode === 'fixed'
+                    ? `Fixed seed ${data.seed_used} was used, so the run is reproducible.`
+                    : `Random seed ${data.seed_used} was used, so the next Monte Carlo run should differ.`;
+                setStatusStrip('option-risk-context-output', 'Option risk calculated', seedText);
+            } catch (e) {
+                setInlineFeedback('option-var-feedback', e.message, 'danger', 'Не удалось рассчитать Option Risk');
+            } finally { hideLoading(); }
         });
 
         // --- BACKTESTING ---
         document.getElementById('runBacktestBtn').addEventListener('click', async () => {
             showLoading();
             try {
+                clearInlineFeedback('backtest-feedback');
                 const pnlSeries = parseNumberList(document.getElementById('bt-pnl-series').value);
-                const confidence = parseFloat(document.getElementById('bt-confidence').value);
+                const confidence = getNumericValue('bt-confidence');
                 const window = parseInt(document.getElementById('bt-window').value);
 
-                if (pnlSeries.length === 0) { alert("P&L Series cannot be empty."); return; }
-                if (pnlSeries.length <= window) { alert("P&L Series length must be greater than window size."); return; }
+                if (pnlSeries.length === 0) {
+                    setInlineFeedback('backtest-feedback', 'Введите ряд P&L через запятую, чтобы запустить rolling backtest.', 'warning', 'Нет данных');
+                    return;
+                }
+                if (pnlSeries.length <= window) {
+                    setInlineFeedback('backtest-feedback', 'Длина ряда должна быть больше rolling window.', 'warning', 'Недостаточно наблюдений');
+                    return;
+                }
 
                 const payload = { pnl: pnlSeries, confidence, window };
 
-                const res = await fetch('/api/backtest', {
+                const data = await apiRequest('/api/backtest', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data.error) throw new Error(data.error);
+                }, 'Не удалось выполнить backtest.');
 
                 const cc = data.conditional_coverage_test;
                 const pof = cc.pof;
@@ -1998,11 +2838,17 @@
                     ]) + renderRawDetails(data.rolling_history);
                 document.getElementById('backtest-cc-output').innerHTML =
                     renderMetricCards([
-                        { label: 'POF Verdict', value: String(pof.verdict).toUpperCase() },
+                        { label: 'POF Verdict', value: verdictLabel(pof.verdict) },
                         { label: 'POF p-value', value: safeNumber(pof.p_value, 4) },
-                        { label: 'Independence Verdict', value: String(ind.verdict).toUpperCase() },
+                        { label: 'Independence Verdict', value: verdictLabel(ind.verdict) },
                         { label: 'CC p-value', value: safeNumber(cc.p_value, 4) },
-                    ]) + renderRawDetails(data.conditional_coverage_test);
+                    ]) +
+                    `<div class="mt-3 d-flex flex-wrap gap-2">
+                        ${verdictBadge(pof.verdict)}
+                        ${verdictBadge(ind.verdict)}
+                        ${verdictBadge(cc.verdict)}
+                    </div>` +
+                    renderRawDetails(data.conditional_coverage_test);
                 document.getElementById('backtest-es-output').innerHTML =
                     renderMetricCards([
                         { label: 'Tail Events', value: safeNumber(data.es_diagnostics.tail_events, 0) },
@@ -2011,24 +2857,29 @@
                         { label: 'Tail Loss Ratio', value: safeNumber(data.es_diagnostics.tail_loss_ratio, 4) },
                     ]) + renderRawDetails(data.es_diagnostics);
 
-            } catch (e) { alert("Error running backtest: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('backtest-feedback', e.message, 'danger', 'Не удалось выполнить проверку модели');
+            } finally { hideLoading(); }
         });
 
         // --- RISK ATTRIBUTION ---
         document.getElementById('runRiskAttributionBtn').addEventListener('click', async () => {
             showLoading();
             try {
+                clearInlineFeedback('risk-attribution-feedback');
                 const factorNames = parseStringList(document.getElementById('ra-factor-names').value);
                 const deltaCashValues = parseNumberList(document.getElementById('ra-delta-cash').value);
                 const muHorizonValues = parseNumberList(document.getElementById('ra-mu-horizon').value);
                 const covarianceHorizon = JSON.parse(document.getElementById('ra-covariance-horizon').value);
-                const zValue = parseFloat(document.getElementById('ra-z-value').value);
+                const zValue = getNumericValue('ra-z-value');
 
                 if (factorNames.length === 0 || deltaCashValues.length === 0 || muHorizonValues.length === 0 || covarianceHorizon.length === 0) {
-                    alert("All fields must be filled for Risk Attribution."); return;
+                    setInlineFeedback('risk-attribution-feedback', 'Заполните названия факторов, cash-delta, mu и covariance matrix.', 'warning', 'Не хватает входных данных');
+                    return;
                 }
                 if (!(factorNames.length === deltaCashValues.length && deltaCashValues.length === muHorizonValues.length && muHorizonValues.length === covarianceHorizon.length)) {
-                    alert("Lengths of Factor Names, Delta Cash, and Mu Horizon must match the covariance matrix dimensions."); return;
+                    setInlineFeedback('risk-attribution-feedback', 'Длины списков должны совпадать с размерностью covariance matrix.', 'warning', 'Несовместимые размеры');
+                    return;
                 }
 
                 const payload = {
@@ -2039,13 +2890,11 @@
                     z_value: zValue
                 };
 
-                const res = await fetch('/api/risk_attribution', {
+                const data = await apiRequest('/api/risk_attribution', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data.error) throw new Error(data.error);
+                }, 'Не удалось выполнить factor breakdown.');
 
                 document.getElementById('risk-attribution-output').innerHTML =
                     renderMetricCards([
@@ -2066,58 +2915,81 @@
                     ) +
                     renderRawDetails(data);
 
-            } catch (e) { alert("Error running risk attribution: " + e.message); } finally { hideLoading(); }
+            } catch (e) {
+                setInlineFeedback('risk-attribution-feedback', e.message, 'danger', 'Не удалось разложить риск по факторам');
+            } finally { hideLoading(); }
         });
 
         // --- STRESS TESTING ---
         document.getElementById('runStressTestBtn').addEventListener('click', async () => {
             showLoading();
             try {
-                const positions = JSON.parse(document.getElementById('st-positions').value);
-                const horizonDays = parseInt(document.getElementById('st-horizon-days').value);
-                const underlyingReturnShocks = JSON.parse(document.getElementById('st-underlying-shocks').value);
-                const volatilityShift = parseFloat(document.getElementById('st-vol-shift').value);
-                const rateShift = parseFloat(document.getElementById('st-rate-shift').value);
-
-                if (positions.length === 0 || Object.keys(underlyingReturnShocks).length === 0) {
-                    alert("Positions and Underlying Return Shocks cannot be empty."); return;
-                }
-
-                const payload = {
-                    positions: positions,
-                    horizon_days: horizonDays,
-                    underlying_return_shocks: underlyingReturnShocks,
-                    volatility_shift: volatilityShift,
-                    rate_shift: rateShift
-                };
-
-                const res = await fetch('/api/stress_test', {
+                clearInlineFeedback('stress-feedback');
+                const payload = buildSimpleStressPayload();
+                const data = await apiRequest('/api/stress_test', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data.error) throw new Error(data.error);
+                }, 'Не удалось выполнить stress-check.');
 
-                document.getElementById('stress-test-output').innerHTML =
-                    renderSimpleTable(
-                        (data.scenarios || []).map(item => ({
-                            name: item.name,
-                            base_value: safeNumber(item.base_value, 4),
-                            stressed_value: safeNumber(item.stressed_value, 4),
-                            total_pnl: safeNumber(item.total_pnl, 4),
-                            positions: item.positions ? item.positions.length : 0,
-                        })),
-                        [
-                            { key: 'name', label: 'Scenario' },
-                            { key: 'base_value', label: 'Base Value' },
-                            { key: 'stressed_value', label: 'Stressed Value' },
-                            { key: 'total_pnl', label: 'PnL' },
-                            { key: 'positions', label: 'Positions' },
-                        ]
-                    ) + renderRawDetails(data);
+                document.getElementById('stress-test-output').innerHTML = buildStressResultTable(data);
+            } catch (e) {
+                setInlineFeedback('stress-feedback', e.message, 'danger', 'Не удалось выполнить stress-check');
+            } finally { hideLoading(); }
+        });
 
-            } catch (e) { alert("Error running stress test: " + e.message); } finally { hideLoading(); }
+        document.getElementById('addStressPositionBtn').addEventListener('click', () => {
+            const positions = getStressProPositions();
+            positions.push(defaultStressPosition(positions.length));
+            renderStressProPositions(positions);
+        });
+
+        document.getElementById('refreshStressShocksBtn').addEventListener('click', () => {
+            applyStressProPreset(false);
+        });
+
+        document.getElementById('st-pro-preset').addEventListener('change', () => {
+            applyStressProPreset(true);
+        });
+
+        document.getElementById('stress-pro-positions').addEventListener('click', (event) => {
+            const removeButton = event.target.closest('[data-action="remove-stress-position"]');
+            if (!removeButton) return;
+
+            const positions = getStressProPositions();
+            const card = removeButton.closest('.stress-position-card');
+            const index = Array.from(document.querySelectorAll('.stress-position-card')).indexOf(card);
+            const nextPositions = positions.filter((_, positionIndex) => positionIndex !== index);
+            renderStressProPositions(nextPositions.length > 0 ? nextPositions : [defaultStressPosition()]);
+        });
+
+        document.getElementById('stress-pro-positions').addEventListener('change', (event) => {
+            if (event.target.matches('[data-field="underlying_id"]')) {
+                applyStressProPreset(false);
+            }
+        });
+
+        document.getElementById('runStressTestBtnPro').addEventListener('click', async () => {
+            showLoading();
+            try {
+                clearInlineFeedback('stress-feedback');
+                const payload = collectStressProPayload();
+
+                if (payload.positions.length === 0 || Object.keys(payload.underlying_return_shocks).length === 0) {
+                    setInlineFeedback('stress-feedback', 'Добавьте хотя бы одну позицию и хотя бы один shock по underlying.', 'warning', 'Stress input is empty');
+                    return;
+                }
+
+                const data = await apiRequest('/api/stress_test', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                }, 'Не удалось выполнить advanced stress test.');
+
+                document.getElementById('stress-test-output').innerHTML = buildStressResultTable(data);
+            } catch (e) {
+                setInlineFeedback('stress-feedback', e.message, 'danger', 'Не удалось выполнить advanced stress test');
+            } finally { hideLoading(); }
         });
 
         // Initial setup for dates
@@ -2132,6 +3004,15 @@
             document.getElementById('port-end').value = endDate;
             document.getElementById('moex-start-date').value = startDate;
             document.getElementById('moex-end-date').value = endDate;
+            document.getElementById('single-risk-preset').addEventListener('change', applySingleRiskPreset);
+            document.getElementById('noviceModeBtn').addEventListener('click', () => applyExperienceMode('novice'));
+            document.getElementById('proModeBtn').addEventListener('click', () => applyExperienceMode('pro'));
+            document.getElementById('ovar-use-fixed-seed').addEventListener('change', toggleOptionSeedInput);
+            applyFieldHelp();
+            applySingleRiskPreset();
+            toggleOptionSeedInput();
+            renderStressProPositions([defaultStressPosition()]);
+            applyExperienceMode(currentExperienceMode);
         };
     </script>
 </body>

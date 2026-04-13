@@ -1,7 +1,9 @@
 import math
 import random
 from statistics import mean, stdev
-from typing import List, Tuple, Optional
+from typing import List
+
+from scipy.stats import norm
 
 def parse_price_input(raw_input: str) -> List[float]:
     """Parses a string of numbers separated by spaces or commas."""
@@ -20,21 +22,16 @@ def generate_random_prices(days: int = 100, start_price: float = 100.0, volatili
         prices.append(max(0.01, new_price)) 
     return prices
 
-Z_BY_CONFIDENCE = {
-    0.95: 1.645,
-    0.99: 2.326,
-}
-
 def normalize_confidence(value: float) -> float:
     if value > 1:
         value = value / 100.0
-    value = round(value, 4)
-    if value not in Z_BY_CONFIDENCE:
-        return 0.95 
-    return value
+    if value <= 0.0 or value >= 1.0:
+        raise ValueError("Confidence must lie between 0 and 1, or between 0 and 100 when provided as a percent.")
+    return float(value)
 
 def z_value_for_confidence(confidence: float) -> float:
-    return Z_BY_CONFIDENCE.get(confidence, 1.645)
+    normalized_confidence = normalize_confidence(confidence)
+    return float(norm.ppf(normalized_confidence))
 
 def pnl_from_prices(prices: List[float], position_size: float = 1.0) -> List[float]:
     if len(prices) < 2:
