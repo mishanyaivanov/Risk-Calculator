@@ -1,5 +1,7 @@
 import math
 
+from .option_var import validate_covariance_matrix
+
 
 def _portfolio_sigma(
     exposures: list[float],
@@ -13,6 +15,7 @@ def _portfolio_sigma(
     for row in covariance_matrix:
         if len(row) != n:
             raise ValueError("Covariance matrix должна быть квадратной.")
+    validate_covariance_matrix(covariance_matrix)
 
     variance = 0.0
     for i in range(n):
@@ -38,7 +41,8 @@ def delta_normal_var_contributions(
     mu_portfolio = sum(
         delta_cash_values[i] * mu_horizon_values[i] for i in range(n)
     )
-    var_loss = max(0.0, z_value * sigma_portfolio - mu_portfolio)
+    raw_var_loss = z_value * sigma_portfolio - mu_portfolio
+    var_loss = max(0.0, raw_var_loss)
 
     sigma_safe = max(sigma_portfolio, 1e-12)
     sigma_times_exposure: list[float] = []
@@ -51,7 +55,10 @@ def delta_normal_var_contributions(
     rows: list[dict[str, float | str]] = []
     total_component = 0.0
     for i in range(n):
-        marginal = z_value * (sigma_times_exposure[i] / sigma_safe) - mu_horizon_values[i]
+        if raw_var_loss <= 0.0:
+            marginal = 0.0
+        else:
+            marginal = z_value * (sigma_times_exposure[i] / sigma_safe) - mu_horizon_values[i]
         component = delta_cash_values[i] * marginal
         total_component += component
         rows.append(
@@ -72,6 +79,7 @@ def delta_normal_var_contributions(
     return {
         "portfolio_mu": mu_portfolio,
         "portfolio_sigma": sigma_portfolio,
+        "portfolio_var_raw": raw_var_loss,
         "portfolio_var": var_loss,
         "sum_component_var": total_component,
         "rows": rows,

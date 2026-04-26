@@ -90,7 +90,8 @@ def black_scholes_price_and_greeks(
         "delta": delta,
         "gamma": gamma,
         "vega": vega,
+        "vega_per_1pct": vega / 100.0,
         "theta": theta,
         "rho": rho,
+        "rho_per_1pct": rho / 100.0,
     }
-

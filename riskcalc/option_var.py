@@ -8,6 +8,85 @@ from .option_pricing import (
 )
 
 
+def validate_correlation_matrix(correlation_matrix: list[list[float]], tol: float = 1e-10) -> None:
+    n = len(correlation_matrix)
+    if n == 0:
+        raise ValueError("Correlation matrix не может быть пустой.")
+    for i, row in enumerate(correlation_matrix):
+        if len(row) != n:
+            raise ValueError("Correlation matrix должна быть квадратной.")
+        if abs(row[i] - 1.0) > tol:
+            raise ValueError("Диагональ correlation matrix должна быть равна 1.")
+
+    for i, row in enumerate(correlation_matrix):
+        for j, value in enumerate(row):
+            if value < -1.0 - tol or value > 1.0 + tol:
+                raise ValueError("Корреляции должны быть в диапазоне [-1, 1].")
+            if abs(value - correlation_matrix[j][i]) > tol:
+                raise ValueError("Correlation matrix должна быть симметричной.")
+
+
+def validate_covariance_matrix(covariance_matrix: list[list[float]], tol: float = 1e-10) -> None:
+    n = len(covariance_matrix)
+    if n == 0:
+        raise ValueError("Covariance matrix не может быть пустой.")
+    for i, row in enumerate(covariance_matrix):
+        if len(row) != n:
+            raise ValueError("Covariance matrix должна быть квадратной.")
+        if row[i] < -tol:
+            raise ValueError("Диагональ covariance matrix не может быть отрицательной.")
+        for j, value in enumerate(row):
+            if abs(value - covariance_matrix[j][i]) > tol:
+                raise ValueError("Covariance matrix должна быть симметричной.")
+
+    _semi_cholesky(covariance_matrix, tol=tol)
+
+
+def gamma_matrix_from_diagonal(gamma_cash_values: list[float]) -> list[list[float]]:
+    n = len(gamma_cash_values)
+    return [
+        [gamma_cash_values[i] if i == j else 0.0 for j in range(n)]
+        for i in range(n)
+    ]
+
+
+def _validate_gamma_matrix(gamma_matrix: list[list[float]], expected_size: int, tol: float = 1e-10) -> None:
+    if len(gamma_matrix) != expected_size:
+        raise ValueError("Размер gamma matrix не совпадает с количеством факторов.")
+    for i, row in enumerate(gamma_matrix):
+        if len(row) != expected_size:
+            raise ValueError("Gamma matrix должна быть квадратной.")
+        for j, value in enumerate(row):
+            if abs(value - gamma_matrix[j][i]) > tol:
+                raise ValueError("Gamma matrix должна быть симметричной.")
+
+
+def _mat_vec(matrix: list[list[float]], vector: list[float]) -> list[float]:
+    return [sum(row[j] * vector[j] for j in range(len(vector))) for row in matrix]
+
+
+def _quadratic_form(vector: list[float], matrix: list[list[float]]) -> float:
+    mv = _mat_vec(matrix, vector)
+    return sum(vector[i] * mv[i] for i in range(len(vector)))
+
+
+def _trace_product(left: list[list[float]], right: list[list[float]]) -> float:
+    n = len(left)
+    total = 0.0
+    for i in range(n):
+        for j in range(n):
+            total += left[i][j] * right[j][i]
+    return total
+
+
+def _mat_mul(left: list[list[float]], right: list[list[float]]) -> list[list[float]]:
+    n = len(left)
+    return [
+        [sum(left[i][k] * right[k][j] for k in range(n)) for j in range(n)]
+        for i in range(n)
+    ]
+
+
 def covariance_from_sigmas_and_correlation(
     sigma_values: list[float],
     correlation_matrix: list[list[float]],
@@ -17,17 +96,17 @@ def covariance_from_sigmas_and_correlation(
         raise ValueError("Нужен хотя бы один фактор риска.")
     if len(correlation_matrix) != n:
         raise ValueError("Размер correlation matrix не совпадает с количеством факторов.")
+    validate_correlation_matrix(correlation_matrix)
 
     covariance = [[0.0 for _ in range(n)] for _ in range(n)]
     for i in range(n):
-        if len(correlation_matrix[i]) != n:
-            raise ValueError("Correlation matrix должна быть квадратной.")
         if sigma_values[i] < 0:
             raise ValueError("Sigma не может быть отрицательной.")
         for j in range(n):
             covariance[i][j] = (
                 correlation_matrix[i][j] * sigma_values[i] * sigma_values[j]
             )
+    validate_covariance_matrix(covariance)
     return covariance
 
 
@@ -78,6 +157,7 @@ def sample_multivariate_normal(
         raise ValueError("Mean vector не может быть пустым.")
     if len(covariance_matrix) != n:
         raise ValueError("Размер covariance matrix не совпадает с размером mean vector.")
+    validate_covariance_matrix(covariance_matrix)
 
     lower = _semi_cholesky(covariance_matrix)
     rng = random.Random(seed)
@@ -159,6 +239,7 @@ def option_var_moment_approximations_multifactor(
     mu_horizon_values: list[float],
     covariance_horizon: list[list[float]],
     z_value: float,
+    gamma_cross_matrix: list[list[float]] | None = None,
 ) -> dict[str, float]:
     n = len(delta_cash_values)
     if (
@@ -170,6 +251,10 @@ def option_var_moment_approximations_multifactor(
     for row in covariance_horizon:
         if len(row) != n:
             raise ValueError("Covariance matrix должна быть квадратной.")
+    validate_covariance_matrix(covariance_horizon)
+
+    gamma_matrix = gamma_cross_matrix or gamma_matrix_from_diagonal(gamma_cash_values)
+    _validate_gamma_matrix(gamma_matrix, n)
 
     mu_dn = theta_horizon
     for i in range(n):
@@ -189,33 +274,22 @@ def option_var_moment_approximations_multifactor(
 
     mu_dg = mu_dn
     for i in range(n):
-        mu_dg += 0.5 * gamma_cash_values[i] * (
-            mu_horizon_values[i] ** 2 + covariance_horizon[i][i]
-        )
+        for j in range(n):
+            mu_dg += 0.5 * gamma_matrix[i][j] * (
+                covariance_horizon[i][j] + mu_horizon_values[i] * mu_horizon_values[j]
+            )
 
     var_l = var_dn
-    cov_l_q = 0.0
-    for i in range(n):
-        for j in range(n):
-            cov_l_q += (
-                delta_cash_values[i]
-                * gamma_cash_values[j]
-                * mu_horizon_values[j]
-                * covariance_horizon[i][j]
-            )
-
-    var_q = 0.0
-    for i in range(n):
-        for j in range(n):
-            sij = covariance_horizon[i][j]
-            var_q += (
-                0.5 * gamma_cash_values[i] * gamma_cash_values[j] * (sij ** 2)
-                + gamma_cash_values[i]
-                * gamma_cash_values[j]
-                * mu_horizon_values[i]
-                * mu_horizon_values[j]
-                * sij
-            )
+    sigma_gamma = _mat_mul(covariance_horizon, gamma_matrix)
+    gamma_sigma = _mat_mul(gamma_matrix, covariance_horizon)
+    gamma_sigma_gamma = _mat_mul(gamma_matrix, sigma_gamma)
+    cov_l_q = sum(
+        delta_cash_values[i] * sigma_gamma[i][j] * mu_horizon_values[j]
+        for i in range(n)
+        for j in range(n)
+    )
+    var_q = 0.5 * _trace_product(gamma_sigma, gamma_sigma)
+    var_q += _quadratic_form(mu_horizon_values, gamma_sigma_gamma)
 
     var_dg = max(0.0, var_l + var_q + 2.0 * cov_l_q)
     sigma_dg = math.sqrt(var_dg)
@@ -275,10 +349,13 @@ def simulate_delta_gamma_pnl_multifactor(
     covariance_matrix: list[list[float]],
     simulations: int,
     seed: int,
+    gamma_cross_matrix: list[list[float]] | None = None,
 ) -> list[float]:
     n = len(delta_cash_values)
     if len(gamma_cash_values) != n or len(mean_vector) != n:
         raise ValueError("Размеры векторов для multifactor Delta-Gamma не совпадают.")
+    gamma_matrix = gamma_cross_matrix or gamma_matrix_from_diagonal(gamma_cash_values)
+    _validate_gamma_matrix(gamma_matrix, n)
 
     scenarios = sample_multivariate_normal(
         mean_vector=mean_vector,
@@ -291,7 +368,8 @@ def simulate_delta_gamma_pnl_multifactor(
         pnl_value = theta_horizon
         for i in range(n):
             pnl_value += delta_cash_values[i] * scenario[i]
-            pnl_value += 0.5 * gamma_cash_values[i] * (scenario[i] ** 2)
+            for j in range(n):
+                pnl_value += 0.5 * gamma_matrix[i][j] * scenario[i] * scenario[j]
         pnl.append(pnl_value)
     return pnl
 

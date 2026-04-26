@@ -91,6 +91,11 @@ def z_value_for_confidence(confidence: float) -> float:
     return Z_BY_CONFIDENCE[confidence]
 
 
+def validate_confidence(confidence: float) -> None:
+    if confidence <= 0.0 or confidence >= 1.0:
+        raise ValueError("Уровень доверия confidence должен быть в диапазоне (0, 1).")
+
+
 def pnl_from_prices(prices: list[float], position_size: float = 1.0) -> list[float]:
     if len(prices) < 2:
         raise ValueError("Для расчета P&L из цен нужно минимум 2 цены.")
@@ -119,6 +124,7 @@ def aggregate_pnl_series(series_list: list[list[float]]) -> list[float]:
 def historical_var_discrete(pnl: list[float], confidence: float) -> tuple[float, float, int]:
     if len(pnl) < 2:
         raise ValueError("Для Historical VaR нужно минимум 2 наблюдения P&L.")
+    validate_confidence(confidence)
 
     alpha = 1.0 - confidence
     sorted_pnl = sorted(pnl)  # Worst losses are first (most negative values).
@@ -134,6 +140,7 @@ def historical_var_discrete(pnl: list[float], confidence: float) -> tuple[float,
 def expected_shortfall_discrete(pnl: list[float], confidence: float) -> tuple[float, float, int]:
     if len(pnl) < 2:
         raise ValueError("Для Expected Shortfall нужно минимум 2 наблюдения P&L.")
+    validate_confidence(confidence)
 
     alpha = 1.0 - confidence
     sorted_pnl = sorted(pnl)
@@ -150,6 +157,7 @@ def expected_shortfall_discrete(pnl: list[float], confidence: float) -> tuple[fl
 def parametric_var(pnl: list[float], confidence: float) -> tuple[float, float, float, float]:
     if len(pnl) < 2:
         raise ValueError("Для параметрического VaR нужно минимум 2 наблюдения P&L.")
+    validate_confidence(confidence)
 
     mu = mean(pnl)
     sigma = stdev(pnl)
@@ -283,8 +291,10 @@ def evaluate_option_position(position: dict[str, float | str]) -> dict[str, floa
         "delta": greeks["delta"] * scale,
         "gamma": greeks["gamma"] * scale,
         "vega": greeks["vega"] * scale,
+        "vega_per_1pct": greeks["vega_per_1pct"] * scale,
         "theta": greeks["theta"] * scale,
         "rho": greeks["rho"] * scale,
+        "rho_per_1pct": greeks["rho_per_1pct"] * scale,
         "value": greeks["price"] * scale,
         # Cash Greeks for dS = S * return shock, useful for VaR approximations.
         "delta_cash": greeks["delta"] * spot * scale,
@@ -299,8 +309,10 @@ def aggregate_option_results(evaluated_positions: list[dict[str, float | str]]) 
         "delta": 0.0,
         "gamma": 0.0,
         "vega": 0.0,
+        "vega_per_1pct": 0.0,
         "theta": 0.0,
         "rho": 0.0,
+        "rho_per_1pct": 0.0,
         "delta_cash": 0.0,
         "gamma_cash": 0.0,
         "theta_day": 0.0,
@@ -310,8 +322,10 @@ def aggregate_option_results(evaluated_positions: list[dict[str, float | str]]) 
         totals["delta"] += float(row["delta"])
         totals["gamma"] += float(row["gamma"])
         totals["vega"] += float(row["vega"])
+        totals["vega_per_1pct"] += float(row["vega_per_1pct"])
         totals["theta"] += float(row["theta"])
         totals["rho"] += float(row["rho"])
+        totals["rho_per_1pct"] += float(row["rho_per_1pct"])
         totals["delta_cash"] += float(row["delta_cash"])
         totals["gamma_cash"] += float(row["gamma_cash"])
         totals["theta_day"] += float(row["theta_day"])
