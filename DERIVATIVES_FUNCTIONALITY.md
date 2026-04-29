@@ -19,6 +19,7 @@ It is designed for:
 - option pricing and Greeks
 - option VaR and Monte Carlo simulation
 - futures / forward / SPFI pricing
+- bond cashflow and swap-spread analysis
 - linear derivative VaR / ES
 - model backtesting
 - factor risk attribution
@@ -84,9 +85,11 @@ Files:
 - `services/option_var.py`
 - `services/forward_pricing.py`
 - `services/linear_risk.py`
+- `services/bond_swap.py`
 - `services/backtesting.py`
 - `services/risk_attribution.py`
 - `services/stress_testing.py`
+- `services/bond_swap.py`
 
 Responsibilities:
 
@@ -98,6 +101,7 @@ Responsibilities:
 - decompose risk by factor
 - validate models on history
 - reprice portfolios under stress scenarios
+- value bond cashflows and calibrate swap hedges
 
 ## 3. UI Modes
 
@@ -127,6 +131,7 @@ Visible tabs:
 - all novice tabs
 - `Options`
 - `Futures & SPFI`
+- `Bond & Swap`
 - `Option Risk`
 - `Model Check`
 - `Factor Breakdown`
@@ -234,6 +239,8 @@ Reference-only files that remain outside runtime:
   - futures / forward / SPFI pricing
 - `POST /api/linear_var`
   - linear derivative VaR / ES / scenario PnL
+- `POST /api/bond_swap`
+  - bond cashflow valuation and swap-spread calibration
 - `POST /api/backtest`
   - rolling backtest and diagnostics
 - `POST /api/risk_attribution`
@@ -564,6 +571,47 @@ Outputs:
 - total PnL
 - per-position stressed PnL
 
+## 9.8 `services/bond_swap.py`
+
+Purpose:
+
+- bond cashflow construction
+- curve interpolation
+- bond PV valuation
+- floating-leg valuation
+- fair swap-spread calibration
+- one-year rate-scenario analysis for hedge constructions
+
+Core functions:
+
+- `parse_rate(raw)`
+- `tenor_to_years(raw)`
+- `normalize_curve_points(curve)`
+- `interpolate_curve_rate(curve, tenor_years)`
+- `build_bond_cashflows(issue)`
+- `value_bond_cashflows(cashflows, discount_curve, valuation_date, include_coupon, include_principal)`
+- `value_floating_swap_leg(cashflows, projection_curve, discount_curve, valuation_date, notional, spread_bps, hedge_ratio, pay_receive)`
+- `solve_swap_spread_bps(cashflows, projection_curve, discount_curve, valuation_date, target_pv, notional, hedge_ratio, pay_receive, target_net_pv)`
+- `evaluate_bond_swap_package(issue, curve, valuation_date, rate_scenarios_1y, hedge_ratios, include_full_issue_variant)`
+- `shift_curve_to_1y_rate(curve, rate_1y)`
+
+What the module returns:
+
+- the full coupon and principal cashflow schedule
+- PV of coupon-only, principal-only, and full bond cashflows
+- several hedge constructions for different hedge ratios
+- fair spread in basis points for each construction
+- one-year scenario results after shifting the curve around the 1Y pivot
+
+User meaning:
+
+- this block is for interest-rate hedging logic, not for equity option VaR
+- it answers questions such as:
+  - what are the bond cashflows
+  - what is the bond PV on the current curve
+  - what floating spread would offset coupon PV or full issue PV
+  - how sensitive is that construction to rate moves
+
 ## 10. Data Adapter Modules
 
 ## 10.1 `services/tinkoff_service.py`
@@ -713,7 +761,24 @@ Flow:
 2. Run factor breakdown
 3. Review marginal and component contributions
 
-## 11.9 Stress Scenarios
+## 11.9 Bond & Swap
+
+Use when:
+
+- you want to value a bond issue on a curve
+- you want to see the coupon / principal cashflow schedule
+- you want to calibrate a pay-floating swap spread as a hedge
+
+Flow:
+
+1. Enter issue dates, notional, coupon, and coupon frequency
+2. Enter the market curve points
+3. Enter one-year rate scenarios
+4. Choose hedge ratios
+5. Run the bond / swap package
+6. Review bond PV, fair spread, hedge constructions, and scenario sensitivity
+
+## 11.10 Stress Scenarios
 
 Novice flow:
 

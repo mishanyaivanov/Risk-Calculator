@@ -259,6 +259,9 @@
             <li class="nav-item me-2 ui-pro-nav" role="presentation">
                 <button class="nav-link" id="risk-attribution-tab" data-bs-toggle="pill" data-bs-target="#risk-attribution" type="button" role="tab">Factor Breakdown</button>
             </li>
+            <li class="nav-item me-2 ui-pro-nav" role="presentation">
+                <button class="nav-link" id="bond-swap-tab" data-bs-toggle="pill" data-bs-target="#bond-swap" type="button" role="tab">Bond & Swap</button>
+            </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="stress-testing-tab" data-bs-toggle="pill" data-bs-target="#stress-testing" type="button" role="tab">Stress-сценарии</button>
             </li>
@@ -1149,6 +1152,122 @@
                 </div>
             </div>
 
+            <!-- BOND / SWAP TAB -->
+            <div class="tab-pane fade ui-pro-pane" id="bond-swap" role="tabpanel">
+                <div class="section-intro">
+                    <strong>Bond &amp; Swap.</strong> Этот экран помогает оценить облигационный выпуск, построить его денежные потоки и подобрать swap-spread для хеджа купонов или всего выпуска. Он полезен, когда нужно понять, какой floating swap может компенсировать процентный риск по облигации.
+                </div>
+                <div class="alert alert-danger inline-feedback" id="bond-swap-feedback"></div>
+                <div class="row">
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">1. Выпуск облигации</div>
+                            <div class="card-body">
+                                <div class="theory-card">
+                                    <strong>Что вы задаёте</strong>
+                                    Слева вы описываете сам выпуск: даты, номинал и купон. Ниже задаёте рыночную кривую ставок и сценарии для 1Y-rate.
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small">Issue Date</label>
+                                        <input type="date" class="form-control form-control-sm" id="bs-issue-date" value="2026-01-01">
+                                        <div class="field-help">Дата начала выпуска.</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Maturity Date</label>
+                                        <input type="date" class="form-control form-control-sm" id="bs-maturity-date" value="2029-01-01">
+                                        <div class="field-help">Дата погашения облигации.</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Notional</label>
+                                        <input type="number" class="form-control form-control-sm" id="bs-notional" value="1000000" step="1000">
+                                        <div class="field-help">Номинал выпуска, от которого считаются купоны и principal.</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Coupon Rate</label>
+                                        <input type="text" class="form-control form-control-sm" id="bs-coupon-rate" value="11.5%">
+                                        <div class="field-help">Годовая купонная ставка. Можно писать `0.115` или `11.5%`.</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Coupon Frequency</label>
+                                        <select class="form-select form-select-sm" id="bs-frequency">
+                                            <option value="12">Monthly</option>
+                                            <option value="6" selected>Every 6 months</option>
+                                            <option value="3">Quarterly</option>
+                                            <option value="1">Annual</option>
+                                        </select>
+                                        <div class="field-help">Как часто платится купон, в месяцах.</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Valuation Date</label>
+                                        <input type="date" class="form-control form-control-sm" id="bs-valuation-date" value="2026-01-01">
+                                        <div class="field-help">На какую дату вы оцениваете выпуск и hedge.</div>
+                                    </div>
+                                </div>
+                                <div class="form-check mt-3">
+                                    <input class="form-check-input" type="checkbox" id="bs-include-full-issue" checked>
+                                    <label class="form-check-label small" for="bs-include-full-issue">Добавить вариант хеджа всего выпуска, а не только купонов</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mt-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>2. Кривая ставок</span>
+                                <button type="button" class="btn btn-outline-dark btn-sm" id="addBondCurvePointBtn">Добавить точку</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="field-help mb-2">Задайте рыночную кривую. `Tenor` можно писать как `0D`, `6M`, `1Y`, `3Y`. `Rate` можно вводить как `10%` или `0.10`.</div>
+                                <div id="bond-curve-editor"></div>
+                            </div>
+                        </div>
+                        <div class="card mt-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>3. Сценарии 1Y-rate</span>
+                                <button type="button" class="btn btn-outline-dark btn-sm" id="addBondScenarioBtn">Добавить сценарий</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="field-help mb-2">Для каждого сценария задайте, какой будет ставка на 1 год. Сервис сам перестроит остальную кривую вокруг этой 1Y точки.</div>
+                                <div id="bond-scenarios-editor"></div>
+                            </div>
+                        </div>
+                        <div class="card mt-3">
+                            <div class="card-header">4. Hedge Ratios</div>
+                            <div class="card-body">
+                                <label class="form-label small">Ratios (comma-separated)</label>
+                                <input type="text" class="form-control form-control-sm" id="bs-hedge-ratios" value="1, 0.75, 0.5">
+                                <div class="field-help">Какую долю coupon PV мы хотим захеджировать. По умолчанию экран считает 100%, 75% и 50%.</div>
+                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="runBondSwapBtn">Calculate Bond &amp; Swap</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="status-strip" id="bond-swap-status">
+                            <strong>Bond &amp; Swap ещё не рассчитан</strong>
+                            Заполните выпуск, кривую и сценарии, затем нажмите `Calculate Bond & Swap`.
+                        </div>
+                        <div class="card">
+                            <div class="card-header">Results</div>
+                            <div class="card-body">
+                                <div id="bond-swap-summary-cards" class="result-grid mb-3">
+                                    <div class="result-card"><div class="label">Coupon PV</div><div class="value">--</div></div>
+                                    <div class="result-card"><div class="label">Principal PV</div><div class="value">--</div></div>
+                                    <div class="result-card"><div class="label">Full PV</div><div class="value">--</div></div>
+                                    <div class="result-card"><div class="label">Constructions</div><div class="value">--</div></div>
+                                </div>
+                                <h6>Hedge Constructions</h6>
+                                <div id="bond-swap-constructions-output"><p class="soft-note">No data yet.</p></div>
+                                <h6 class="mt-3">1Y-Rate Scenarios</h6>
+                                <div id="bond-swap-scenarios-output"><p class="soft-note">No data yet.</p></div>
+                                <h6 class="mt-3">Bond Cashflows</h6>
+                                <div id="bond-swap-cashflows-output"><p class="soft-note">No data yet.</p></div>
+                                <h6 class="mt-3">Warnings</h6>
+                                <div id="bond-swap-warnings-output"><p class="soft-note">No warnings yet.</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- STRESS TESTING TAB -->
             <div class="tab-pane fade" id="stress-testing" role="tabpanel">
                 <div class="section-intro">
@@ -1348,6 +1467,7 @@
             'option-var-tab',
             'backtesting-tab',
             'risk-attribution-tab',
+            'bond-swap-tab',
         ];
         const PRO_TAB_PANE_IDS = [
             'option-pricing',
@@ -1355,6 +1475,7 @@
             'option-var',
             'backtesting',
             'risk-attribution',
+            'bond-swap',
         ];
         const STRESS_UNDERLYING_OPTIONS = ['U1', 'U2', 'U3', 'U4'];
         const FIELD_HELP = {
@@ -1680,6 +1801,181 @@
             };
         };
 
+        const defaultBondCurveRows = () => ([
+            { tenor: '0D', rate: '9%' },
+            { tenor: '6M', rate: '9.5%' },
+            { tenor: '1Y', rate: '10%' },
+            { tenor: '3Y', rate: '10.5%' },
+        ]);
+
+        const defaultBondScenarioRows = () => ([
+            { name: 'lower', rate_1y: '8%' },
+            { name: 'base', rate_1y: '10%' },
+            { name: 'higher', rate_1y: '12%' },
+        ]);
+
+        const buildBondCurveRow = (row, index) => `
+            <div class="card mb-2 border-0 bg-light bond-curve-row">
+                <div class="card-body py-2">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-5">
+                            <label class="form-label small mb-1">Tenor</label>
+                            <input type="text" class="form-control form-control-sm" data-field="tenor" value="${escapeHtml(row.tenor || '')}" placeholder="1Y">
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label small mb-1">Rate</label>
+                            <input type="text" class="form-control form-control-sm" data-field="rate" value="${escapeHtml(row.rate || '')}" placeholder="10%">
+                        </div>
+                        <div class="col-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm w-100" data-action="remove-bond-curve-row">X</button>
+                        </div>
+                    </div>
+                    <div class="field-help mt-1">Точка ${index + 1}: срок и соответствующая ставка на кривой.</div>
+                </div>
+            </div>
+        `;
+
+        const buildBondScenarioRow = (row, index) => `
+            <div class="card mb-2 border-0 bg-light bond-scenario-row">
+                <div class="card-body py-2">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Name</label>
+                            <input type="text" class="form-control form-control-sm" data-field="name" value="${escapeHtml(row.name || '')}" placeholder="base">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small mb-1">1Y Rate</label>
+                            <input type="text" class="form-control form-control-sm" data-field="rate_1y" value="${escapeHtml(row.rate_1y || '')}" placeholder="10%">
+                        </div>
+                        <div class="col-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm w-100" data-action="remove-bond-scenario-row">X</button>
+                        </div>
+                    </div>
+                    <div class="field-help mt-1">Сценарий ${index + 1}: какой будет ставка на сроке 1 год.</div>
+                </div>
+            </div>
+        `;
+
+        const renderBondCurveRows = (rows = null) => {
+            const container = document.getElementById('bond-curve-editor');
+            if (!container) return;
+            const nextRows = rows && rows.length > 0 ? rows : defaultBondCurveRows();
+            container.innerHTML = nextRows.map((row, index) => buildBondCurveRow(row, index)).join('');
+        };
+
+        const renderBondScenarioRows = (rows = null) => {
+            const container = document.getElementById('bond-scenarios-editor');
+            if (!container) return;
+            const nextRows = rows && rows.length > 0 ? rows : defaultBondScenarioRows();
+            container.innerHTML = nextRows.map((row, index) => buildBondScenarioRow(row, index)).join('');
+        };
+
+        const getBondCurveRows = () => Array.from(document.querySelectorAll('.bond-curve-row')).map((row) => ({
+            tenor: row.querySelector('[data-field="tenor"]')?.value?.trim() || '',
+            rate: row.querySelector('[data-field="rate"]')?.value?.trim() || '',
+        })).filter((row) => row.tenor && row.rate);
+
+        const getBondScenarioRows = () => Array.from(document.querySelectorAll('.bond-scenario-row')).map((row) => ({
+            name: row.querySelector('[data-field="name"]')?.value?.trim() || '',
+            rate_1y: row.querySelector('[data-field="rate_1y"]')?.value?.trim() || '',
+        })).filter((row) => row.name && row.rate_1y);
+
+        const collectBondSwapPayload = () => ({
+            issue: {
+                issue_date: document.getElementById('bs-issue-date').value,
+                maturity_date: document.getElementById('bs-maturity-date').value,
+                notional: parseDecimal(document.getElementById('bs-notional').value),
+                coupon_rate: document.getElementById('bs-coupon-rate').value,
+                payment_frequency_months: parseInt(document.getElementById('bs-frequency').value, 10),
+            },
+            curve: getBondCurveRows(),
+            valuation_date: document.getElementById('bs-valuation-date').value || null,
+            rate_scenarios_1y: getBondScenarioRows(),
+            hedge_ratios: document.getElementById('bs-hedge-ratios').value
+                .split(',')
+                .map((item) => parseDecimal(item.trim(), NaN))
+                .filter((value) => Number.isFinite(value) && value > 0),
+            include_full_issue_variant: document.getElementById('bs-include-full-issue').checked,
+        });
+
+        const renderBondSwapResult = (data) => {
+            setResultCards('bond-swap-summary-cards', [
+                { label: 'Coupon PV', value: fmtCurrency(data.bond_pv?.coupon_only) },
+                { label: 'Principal PV', value: fmtCurrency(data.bond_pv?.principal_only) },
+                { label: 'Full PV', value: fmtCurrency(data.bond_pv?.coupon_plus_principal) },
+                { label: 'Constructions', value: safeNumber((data.constructions || []).length, 0) },
+            ]);
+
+            document.getElementById('bond-swap-constructions-output').innerHTML = renderSimpleTable(
+                (data.constructions || []).map((row) => ({
+                    name: row.name,
+                    hedge_ratio: safeNumber(row.hedge_ratio, 2),
+                    fair_spread_bps: safeNumber(row.fair_spread_bps, 4),
+                    target_pv: safeNumber(row.target_pv, 4),
+                    swap_pv: safeNumber(row.swap_pv, 4),
+                    net_pv: safeNumber(row.net_pv, 4),
+                })),
+                [
+                    { key: 'name', label: 'Construction' },
+                    { key: 'hedge_ratio', label: 'Hedge Ratio' },
+                    { key: 'fair_spread_bps', label: 'Fair Spread (bps)' },
+                    { key: 'target_pv', label: 'Target PV' },
+                    { key: 'swap_pv', label: 'Swap PV' },
+                    { key: 'net_pv', label: 'Net PV' },
+                ]
+            );
+
+            const scenarioRows = (data.constructions || []).flatMap((construction) =>
+                (construction.scenarios || []).map((scenario) => ({
+                    construction: construction.name,
+                    scenario: scenario.name,
+                    rate_1y: safeNumber(scenario.rate_1y, 4),
+                    shift_vs_base_1y_bps: safeNumber(scenario.shift_vs_base_1y_bps, 2),
+                    net_pv: safeNumber(scenario.net_pv, 4),
+                    delta_vs_base_remaining_pv: safeNumber(scenario.delta_vs_base_remaining_pv, 4),
+                }))
+            );
+            document.getElementById('bond-swap-scenarios-output').innerHTML = renderSimpleTable(
+                scenarioRows,
+                [
+                    { key: 'construction', label: 'Construction' },
+                    { key: 'scenario', label: 'Scenario' },
+                    { key: 'rate_1y', label: '1Y Rate' },
+                    { key: 'shift_vs_base_1y_bps', label: 'Shift (bps)' },
+                    { key: 'net_pv', label: 'Net PV' },
+                    { key: 'delta_vs_base_remaining_pv', label: 'Delta vs Base' },
+                ]
+            );
+
+            document.getElementById('bond-swap-cashflows-output').innerHTML = renderSimpleTable(
+                (data.cashflows || []).map((row) => ({
+                    payment_date: row.payment_date,
+                    accrual_years: safeNumber(row.accrual_years, 4),
+                    coupon_cashflow: safeNumber(row.coupon_cashflow, 4),
+                    principal_cashflow: safeNumber(row.principal_cashflow, 4),
+                    total_cashflow: safeNumber(row.total_cashflow, 4),
+                })),
+                [
+                    { key: 'payment_date', label: 'Payment Date' },
+                    { key: 'accrual_years', label: 'Accrual' },
+                    { key: 'coupon_cashflow', label: 'Coupon' },
+                    { key: 'principal_cashflow', label: 'Principal' },
+                    { key: 'total_cashflow', label: 'Total' },
+                ]
+            );
+
+            const warnings = data.warnings || [];
+            document.getElementById('bond-swap-warnings-output').innerHTML = warnings.length
+                ? `<ul class="helper-list mb-0">${warnings.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+                : '<p class="soft-note">No warnings for this setup.</p>';
+
+            setStatusStrip(
+                'bond-swap-status',
+                'Bond & Swap calculated',
+                'Сервис построил cashflows, оценил PV облигации и подобрал fair spread для каждого hedge construction.'
+            );
+        };
+
         const moexState = {
             instruments: [],
             optionBoard: [],
@@ -1716,6 +2012,7 @@
             'option-var-feedback',
             'backtest-feedback',
             'risk-attribution-feedback',
+            'bond-swap-feedback',
             'stress-feedback',
         ].forEach(clearInlineFeedback);
 
@@ -2920,6 +3217,73 @@
             } finally { hideLoading(); }
         });
 
+        // --- BOND / SWAP ---
+        document.getElementById('addBondCurvePointBtn').addEventListener('click', () => {
+            const rows = getBondCurveRows();
+            rows.push({ tenor: '', rate: '' });
+            renderBondCurveRows(rows);
+        });
+
+        document.getElementById('addBondScenarioBtn').addEventListener('click', () => {
+            const rows = getBondScenarioRows();
+            rows.push({ name: '', rate_1y: '' });
+            renderBondScenarioRows(rows);
+        });
+
+        document.getElementById('bond-curve-editor').addEventListener('click', (event) => {
+            const removeButton = event.target.closest('[data-action="remove-bond-curve-row"]');
+            if (!removeButton) return;
+            const rows = getBondCurveRows();
+            const card = removeButton.closest('.bond-curve-row');
+            const index = Array.from(document.querySelectorAll('.bond-curve-row')).indexOf(card);
+            const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
+            renderBondCurveRows(nextRows.length > 0 ? nextRows : [{ tenor: '', rate: '' }]);
+        });
+
+        document.getElementById('bond-scenarios-editor').addEventListener('click', (event) => {
+            const removeButton = event.target.closest('[data-action="remove-bond-scenario-row"]');
+            if (!removeButton) return;
+            const rows = getBondScenarioRows();
+            const card = removeButton.closest('.bond-scenario-row');
+            const index = Array.from(document.querySelectorAll('.bond-scenario-row')).indexOf(card);
+            const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
+            renderBondScenarioRows(nextRows.length > 0 ? nextRows : [{ name: '', rate_1y: '' }]);
+        });
+
+        document.getElementById('runBondSwapBtn').addEventListener('click', async () => {
+            showLoading();
+            try {
+                clearInlineFeedback('bond-swap-feedback');
+                const payload = collectBondSwapPayload();
+                if (!payload.issue.issue_date || !payload.issue.maturity_date) {
+                    setInlineFeedback('bond-swap-feedback', 'Укажите даты выпуска и погашения.', 'warning', 'Не хватает дат');
+                    return;
+                }
+                if (payload.curve.length === 0) {
+                    setInlineFeedback('bond-swap-feedback', 'Добавьте хотя бы одну точку кривой ставок.', 'warning', 'Пустая кривая');
+                    return;
+                }
+                if (payload.rate_scenarios_1y.length === 0) {
+                    setInlineFeedback('bond-swap-feedback', 'Добавьте хотя бы один сценарий для 1Y-rate.', 'warning', 'Пустые сценарии');
+                    return;
+                }
+                if (payload.hedge_ratios.length === 0) {
+                    setInlineFeedback('bond-swap-feedback', 'Задайте хотя бы один положительный hedge ratio.', 'warning', 'Нет hedge ratio');
+                    return;
+                }
+
+                const data = await apiRequest('/api/bond_swap', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                }, 'Не удалось рассчитать bond / swap package.');
+
+                renderBondSwapResult(data);
+            } catch (e) {
+                setInlineFeedback('bond-swap-feedback', e.message, 'danger', 'Не удалось рассчитать bond / swap');
+            } finally { hideLoading(); }
+        });
+
         // --- STRESS TESTING ---
         document.getElementById('runStressTestBtn').addEventListener('click', async () => {
             showLoading();
@@ -3012,6 +3376,8 @@
             applySingleRiskPreset();
             toggleOptionSeedInput();
             renderStressProPositions([defaultStressPosition()]);
+            renderBondCurveRows(defaultBondCurveRows());
+            renderBondScenarioRows(defaultBondScenarioRows());
             applyExperienceMode(currentExperienceMode);
         };
     </script>

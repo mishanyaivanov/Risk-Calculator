@@ -20,6 +20,11 @@ def _chi2_sf_df2(statistic: float) -> float:
     return math.exp(-statistic / 2.0)
 
 
+def _validate_confidence(confidence: float) -> None:
+    if confidence <= 0.0 or confidence >= 1.0:
+        raise ValueError("Confidence must lie in the interval (0, 1).")
+
+
 def rolling_historical_var_es(
     pnl: list[float],
     confidence: float,
@@ -29,6 +34,7 @@ def rolling_historical_var_es(
         raise ValueError("P&L series length must be greater than the rolling backtest window.")
     if window < 20:
         raise ValueError("Backtest window must be at least 20 observations.")
+    _validate_confidence(confidence)
 
     alpha = 1.0 - confidence
     realized_pnl: list[float] = []

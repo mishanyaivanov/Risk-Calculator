@@ -2,7 +2,7 @@
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import Any, List, Optional, Dict
 import uvicorn
 import os
 import random
@@ -40,6 +40,7 @@ from services.option_var import (
 )
 from services.forward_pricing import price_linear_derivative
 from services.linear_risk import linear_derivative_var
+from services.bond_swap import evaluate_bond_swap_package
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -233,6 +234,15 @@ class LinearVaRRequest(BaseModel):
     sigma_daily: Optional[float] = None
     historical_prices: Optional[List[float]] = None
     scenario_move_pct: Optional[float] = None
+
+
+class BondSwapRequest(BaseModel):
+    issue: Dict[str, Any]
+    curve: List[Dict[str, Any]]
+    valuation_date: Optional[str] = None
+    rate_scenarios_1y: Optional[List[Any]] = None
+    hedge_ratios: List[float] = [1.0, 0.75, 0.5]
+    include_full_issue_variant: bool = True
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -658,6 +668,21 @@ async def get_linear_var(request: LinearVaRRequest):
             sigma_daily=request.sigma_daily,
             historical_prices=request.historical_prices,
             scenario_move_pct=request.scenario_move_pct,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/bond_swap")
+async def get_bond_swap_package(request: BondSwapRequest):
+    try:
+        return evaluate_bond_swap_package(
+            issue=request.issue,
+            curve=request.curve,
+            valuation_date=request.valuation_date,
+            rate_scenarios_1y=request.rate_scenarios_1y,
+            hedge_ratios=request.hedge_ratios,
+            include_full_issue_variant=request.include_full_issue_variant,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

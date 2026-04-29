@@ -28,7 +28,7 @@ def black_scholes_price_and_greeks(
     maturity_years: float,
     rate: float,
     volatility: float,
-    dividend_yield: float,
+    dividend_yield: float = 0.0,
 ) -> dict[str, float]:
     option_type = normalize_option_type(option_type)
 
@@ -92,8 +92,10 @@ def black_scholes_price_and_greeks(
         "delta": delta,
         "gamma": gamma,
         "vega": vega,
+        "vega_per_1pct": vega / 100.0,
         "theta": theta,
         "rho": rho,
+        "rho_per_1pct": rho / 100.0,
         "d1": d1,
         "d2": d2,
     }
