@@ -27,7 +27,7 @@ It is designed for:
 
 ## 2. Runtime Architecture
 
-The application has four layers.
+The application has five layers.
 
 ### 2.1 Frontend Layer
 
@@ -103,6 +103,23 @@ Responsibilities:
 - reprice portfolios under stress scenarios
 - value bond cashflows and calibrate swap hedges
 
+### 2.5 Service Intelligence Layer
+
+Files:
+
+- `services/explainability.py`
+- `services/risk_copilot.py`
+- `services/hedge_constructor.py`
+- `services/excel_import.py`
+
+Responsibilities:
+
+- turn raw metrics into plain-language explanations
+- highlight the most important signals for non-expert users
+- suggest next analytical steps
+- build before / after hedge scenarios
+- reduce manual input friction through Excel / CSV import
+
 ## 3. UI Modes
 
 The interface supports two experience modes.
@@ -115,6 +132,13 @@ Visible tabs:
 - `Portfolio`
 - `MOEX`
 - `Stress Scenarios`
+
+Visible support features in novice mode:
+
+- Excel / CSV import for one-asset prices and portfolio composition
+- plain-language explainability blocks
+- `Risk Copilot` summaries for single-asset and portfolio risk
+- `Hedge Constructor` scenarios for single-asset and portfolio risk
 
 Design goals:
 
@@ -184,6 +208,10 @@ Those calculations are performed locally in the Python mathematical engine.
 - `Model Check`
 - `Factor Breakdown`
 - `Stress Scenarios`
+- Excel / CSV import
+- `Risk Copilot`
+- `Hedge Constructor`
+- quick bridges from hedge suggestions into derivative workflows
 
 ### 5.3 Migration Status from `New functions`
 
@@ -220,8 +248,12 @@ Reference-only files that remain outside runtime:
   - Tinkoff instrument search
 - `POST /api/calculate`
   - single-asset VaR / ES / LVaR
+- `POST /api/import_prices_file`
+  - import a single-asset price series from Excel / CSV
 - `POST /api/calculate_portfolio`
   - portfolio VaR and efficient frontier
+- `POST /api/import_portfolio_file`
+  - import portfolio composition from Excel / CSV
 
 ### 6.2 Derivative and Validation Endpoints
 
@@ -265,6 +297,9 @@ Important response fields:
 - `parametric_var`
 - `lvar`
 - `risk_status`
+- `explanation`
+- `copilot`
+- `hedge_constructor`
 - `candles`
 - `pnl_series`
 
@@ -280,6 +315,25 @@ Important UX rule:
 - `loss_share_pct`: VaR as percent of position value
 - `summary`: short guidance text
 
+`explanation` contract:
+
+- concise human-readable summary
+- key takeaways
+- next steps
+
+`copilot` contract:
+
+- one-line interpretation
+- key signals with severity
+- suggested actions
+
+`hedge_constructor` contract:
+
+- simple before / after hedge scenarios
+- improvement estimates
+- optional quick bridge into `Futures & SPFI`
+- optional protective-put bridge into `Options`
+
 ### 7.2 `POST /api/calculate_portfolio`
 
 Purpose:
@@ -294,11 +348,20 @@ Important response fields:
 - `assets_cumulative_returns`
 - `portfolio_cumulative_return`
 - `efficient_frontier`
+- `portfolio_status`
+- `portfolio_copilot`
+- `portfolio_hedge_constructor`
 
 Validation rules:
 
 - portfolio weights must sum to a positive value
 - live Tinkoff data requires `TINKOFF_TOKEN`
+
+Portfolio service layer behavior:
+
+- `portfolio_status` gives a plain-language structural summary
+- `portfolio_copilot` highlights concentration and diversification signals
+- `portfolio_hedge_constructor` proposes simple rebalance or overlay scenarios
 
 ### 7.3 `POST /api/option_var`
 
@@ -612,6 +675,78 @@ User meaning:
   - what floating spread would offset coupon PV or full issue PV
   - how sensitive is that construction to rate moves
 
+## 9.9 Service Intelligence Modules
+
+### `services/excel_import.py`
+
+Purpose:
+
+- read Excel / CSV uploads for non-technical users
+- detect sensible column names automatically
+- convert files into UI-ready payloads
+
+Main functions:
+
+- `parse_price_series_file(file_bytes, filename)`
+- `parse_portfolio_file(file_bytes, filename)`
+
+Behavior:
+
+- accepts `.xlsx`, `.xls`, and `.csv`
+- detects common names such as `price`, `close`, `ticker`, `figi`, `weight`
+- prepares preview metadata for the frontend
+
+### `services/explainability.py`
+
+Purpose:
+
+- convert numeric risk output into a short plain-language explanation
+
+Main functions:
+
+- `build_single_asset_explanation(...)`
+- `build_portfolio_explanation(...)`
+
+Behavior:
+
+- produces summary text
+- highlights the main takeaways
+- proposes next steps without changing the mathematics
+
+### `services/risk_copilot.py`
+
+Purpose:
+
+- act as the first interpretation layer above raw metrics
+
+Main functions:
+
+- `build_single_asset_copilot(...)`
+- `build_portfolio_copilot(...)`
+
+Behavior:
+
+- rates the severity of key signals
+- explains what matters most
+- points the user toward stress testing, hedge analysis, or rebalancing
+
+### `services/hedge_constructor.py`
+
+Purpose:
+
+- generate simple before / after hedge ideas from existing calculations
+
+Main functions:
+
+- `build_single_asset_hedge_constructor(...)`
+- `build_portfolio_hedge_constructor(...)`
+
+Behavior:
+
+- builds quick reduction or hedge scenarios
+- estimates directional improvement in VaR-like metrics
+- provides action bridges into `Futures & SPFI`, `Options`, or portfolio reweighting
+
 ## 10. Data Adapter Modules
 
 ## 10.1 `services/tinkoff_service.py`
@@ -656,9 +791,11 @@ Use when:
 Flow:
 
 1. Choose `API`, `Manual`, or `Random`
-2. Select a risk preset
-3. Run the calculation
-4. Read VaR, ES, LVaR, and the plain-language risk status
+2. Optionally import a price series from Excel / CSV
+3. Select a risk preset
+4. Run the calculation
+5. Read VaR, ES, LVaR, the plain-language explanation, and `Risk Copilot`
+6. If needed, continue directly into `Hedge Constructor`, `Futures & SPFI`, or `Options`
 
 ## 11.2 Portfolio
 
@@ -669,10 +806,12 @@ Use when:
 Flow:
 
 1. Add instruments
-2. Set weights
-3. Select a date range
-4. Run portfolio risk
-5. Review VaR, efficient frontier, cumulative return, and correlation matrix
+2. Optionally import composition from Excel / CSV
+3. Set or adjust weights
+4. Select a date range
+5. Run portfolio risk
+6. Review VaR, efficient frontier, cumulative return, correlation matrix, and `Risk Copilot`
+7. If useful, apply a hedge or rebalance scenario directly from `Hedge Constructor`
 
 ## 11.3 MOEX
 

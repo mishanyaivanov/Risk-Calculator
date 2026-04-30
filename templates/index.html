@@ -205,6 +205,106 @@
             background: #eef3f8;
             color: #274760;
         }
+        .copilot-panel {
+            border: 1px solid #dce8f3;
+            border-radius: 0.85rem;
+            background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+            padding: 1rem 1.1rem;
+        }
+        .copilot-panel .title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.65rem;
+        }
+        .copilot-panel .headline {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1f3a52;
+            margin-bottom: 0.2rem;
+        }
+        .copilot-panel .subtitle {
+            color: #495057;
+            font-size: 0.92rem;
+            margin-bottom: 0.65rem;
+        }
+        .copilot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 0.85rem;
+        }
+        .copilot-signal {
+            border: 1px solid #e6eef5;
+            border-radius: 0.75rem;
+            background: #fbfdff;
+            padding: 0.8rem 0.9rem;
+        }
+        .copilot-signal .signal-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #6c757d;
+            margin-bottom: 0.2rem;
+        }
+        .copilot-signal .signal-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 0.35rem;
+        }
+        .copilot-signal .signal-text {
+            color: #495057;
+            font-size: 0.86rem;
+            line-height: 1.35;
+        }
+        .hedge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 0.85rem;
+        }
+        .hedge-card {
+            border: 1px solid #dde7f0;
+            border-radius: 0.85rem;
+            background: #ffffff;
+            padding: 0.95rem 1rem;
+        }
+        .hedge-card .hedge-title {
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: #1f3a52;
+            margin-bottom: 0.4rem;
+        }
+        .hedge-card .hedge-copy {
+            color: #495057;
+            font-size: 0.88rem;
+            line-height: 1.35;
+            margin-bottom: 0.7rem;
+        }
+        .hedge-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 0.7rem;
+        }
+        .hedge-metric {
+            background: #f8fafc;
+            border: 1px solid #edf2f9;
+            border-radius: 0.65rem;
+            padding: 0.55rem 0.65rem;
+        }
+        .hedge-metric .small-label {
+            color: #6c757d;
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .hedge-metric .big-value {
+            color: #2c3e50;
+            font-size: 0.96rem;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -310,6 +410,29 @@
                                         <div class="mb-3">
                                             <label class="form-label small">Ряд цен</label>
                                             <textarea class="form-control form-control-sm" id="manualPrices" rows="5"></textarea>
+                                            <div class="field-help">Можно вставить цены вручную или загрузить Excel-файл с одной колонкой цен, либо с колонками `date` и `price`.</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small">Импорт из Excel</label>
+                                            <input type="file" class="form-control form-control-sm" id="single-excel-file" accept=".xlsx,.xls,.csv">
+                                            <div class="field-help">Подходят `.xlsx`, `.xls`, `.csv`. После импорта ряд автоматически попадёт в поле выше.</div>
+                                            <details class="mt-2">
+                                                <summary class="soft-note">Показать пример файла</summary>
+                                                <div class="pt-2">
+                                                    <div class="field-help mb-2">Самый простой вариант: одна колонка `price`.</div>
+                                                    <pre class="soft-note bg-light border rounded p-2 mb-2">price
+100
+101.5
+99.8
+103.2</pre>
+                                                    <div class="field-help mb-2">Или две колонки: `date` и `price`.</div>
+                                                    <pre class="soft-note bg-light border rounded p-2 mb-0">date,price
+2026-01-01,100
+2026-01-02,101.5
+2026-01-03,99.8</pre>
+                                                </div>
+                                            </details>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-2 w-100" id="importSingleExcelBtn">Загрузить ряд из файла</button>
                                         </div>
                                     </div>
 
@@ -397,6 +520,8 @@
                             </div>
 
                             <div id="single-risk-status" class="mb-3"></div>
+                            <div id="single-copilot-output" class="mb-3"></div>
+                            <div id="single-hedge-output" class="mb-3"></div>
 
                             <div class="card">
                                 <div class="card-header">История цены</div>
@@ -426,6 +551,25 @@
                                     <button class="btn btn-outline-secondary btn-sm" type="button" id="port-search-btn">Добавить</button>
                                 </div>
                                 <div id="port-search-results" class="list-group mb-3 position-absolute w-100 shadow" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+                                <div class="mb-3">
+                                    <label class="form-label small">Импорт состава из Excel</label>
+                                    <input type="file" class="form-control form-control-sm" id="portfolio-excel-file" accept=".xlsx,.xls,.csv">
+                                    <div class="field-help">Файл должен содержать колонку `ticker` или `figi`, а также колонку `weight`. Если вес введён как `40`, мы поймём это как 40%.</div>
+                                    <details class="mt-2">
+                                        <summary class="soft-note">Показать пример файла</summary>
+                                        <div class="pt-2">
+                                            <div class="field-help mb-2">Вариант через тикеры:</div>
+                                            <pre class="soft-note bg-light border rounded p-2 mb-2">ticker,weight
+SBER,0.6
+GAZP,0.4</pre>
+                                            <div class="field-help mb-2">Если веса у вас в процентах, это тоже допустимо:</div>
+                                            <pre class="soft-note bg-light border rounded p-2 mb-0">ticker,weight
+SBER,60
+GAZP,40</pre>
+                                        </div>
+                                    </details>
+                                    <button class="btn btn-outline-secondary btn-sm mt-2 w-100" type="button" id="importPortfolioExcelBtn">Загрузить состав портфеля</button>
+                                </div>
 
                                 <div class="mb-3">
                                     <label class="form-label small">Риск-профиль</label>
@@ -480,6 +624,9 @@
                     <div class="col-lg-8">
                         <div class="alert alert-danger inline-feedback" id="portfolio-feedback"></div>
                         <div id="port-results" class="d-none">
+                            <div id="portfolio-risk-status" class="mb-3"></div>
+                            <div id="portfolio-copilot-output" class="mb-3"></div>
+                            <div id="portfolio-hedge-output" class="mb-3"></div>
                             <!-- Portfolio Metrics -->
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
@@ -627,11 +774,11 @@
                                 <div id="moex-results-instruments" class="mb-3">
                                     <h6 class="novice-only">Список инструментов</h6>
                                     <h6 class="pro-only">Instrument List</h6>
-                                    <div class="table-output" id="moex-instruments-output"><p class="soft-note">No data yet.</p></div>
+                                    <div class="table-output" id="moex-instruments-output"><p class="soft-note">Пока данных нет.</p></div>
                                 </div>
                                 <div id="moex-results-option-board" class="mb-3 pro-only">
                                     <h6>Option Board</h6>
-                                    <div class="table-output" id="moex-option-board-output"><p class="soft-note">No data yet.</p></div>
+                                    <div class="table-output" id="moex-option-board-output"><p class="soft-note">Пока данных нет.</p></div>
                                 </div>
                                 <div id="moex-results-candles" class="mb-3">
                                     <h6>История / Candles</h6>
@@ -855,7 +1002,7 @@
                                     <div class="result-card"><div class="label">Scenario Fair</div><div class="value" id="fp-res-scenario-fair">--</div></div>
                                     <div class="result-card"><div class="label">Scenario PnL</div><div class="value" id="fp-res-scenario-pnl">--</div></div>
                                 </div>
-                                <div id="forward-pricing-output"><p class="soft-note mb-0">No pricing details yet.</p></div>
+                                <div id="forward-pricing-output"><p class="soft-note mb-0">Пока нет деталей по цене контракта.</p></div>
                             </div>
                         </div>
                         <div class="card">
@@ -1090,11 +1237,11 @@
                             <div class="card-header">Results</div>
                             <div class="card-body">
                                 <h6>Rolling Backtest Summary</h6>
-                                <div id="backtest-summary-output"><p class="soft-note">No data yet.</p></div>
+                                <div id="backtest-summary-output"><p class="soft-note">Пока данных нет.</p></div>
                                 <h6 class="mt-3">Conditional Coverage Test</h6>
-                                <div id="backtest-cc-output"><p class="soft-note">No data yet.</p></div>
+                                <div id="backtest-cc-output"><p class="soft-note">Пока данных нет.</p></div>
                                 <h6 class="mt-3">ES Diagnostics</h6>
-                                <div id="backtest-es-output"><p class="soft-note">No data yet.</p></div>
+                                <div id="backtest-es-output"><p class="soft-note">Пока данных нет.</p></div>
                             </div>
                         </div>
                     </div>
@@ -1145,7 +1292,7 @@
                             <div class="card-header">Results</div>
                             <div class="card-body">
                                 <h6>Risk Attribution Details</h6>
-                                <div id="risk-attribution-output"><p class="soft-note">No data yet.</p></div>
+                                <div id="risk-attribution-output"><p class="soft-note">Пока данных нет.</p></div>
                             </div>
                         </div>
                     </div>
@@ -1255,13 +1402,13 @@
                                     <div class="result-card"><div class="label">Constructions</div><div class="value">--</div></div>
                                 </div>
                                 <h6>Hedge Constructions</h6>
-                                <div id="bond-swap-constructions-output"><p class="soft-note">No data yet.</p></div>
+                                <div id="bond-swap-constructions-output"><p class="soft-note">Пока данных нет.</p></div>
                                 <h6 class="mt-3">1Y-Rate Scenarios</h6>
-                                <div id="bond-swap-scenarios-output"><p class="soft-note">No data yet.</p></div>
+                                <div id="bond-swap-scenarios-output"><p class="soft-note">Пока данных нет.</p></div>
                                 <h6 class="mt-3">Bond Cashflows</h6>
-                                <div id="bond-swap-cashflows-output"><p class="soft-note">No data yet.</p></div>
+                                <div id="bond-swap-cashflows-output"><p class="soft-note">Пока данных нет.</p></div>
                                 <h6 class="mt-3">Warnings</h6>
-                                <div id="bond-swap-warnings-output"><p class="soft-note">No warnings yet.</p></div>
+                                <div id="bond-swap-warnings-output"><p class="soft-note">Пока предупреждений нет.</p></div>
                             </div>
                         </div>
                     </div>
@@ -1392,7 +1539,7 @@
                             <div class="card-header">Результаты</div>
                             <div class="card-body">
                                 <h6>Stress Test Scenarios</h6>
-                                <div id="stress-test-output"><p class="soft-note">No data yet.</p></div>
+                                <div id="stress-test-output"><p class="soft-note">Пока данных нет.</p></div>
                             </div>
                         </div>
                     </div>
@@ -1483,12 +1630,14 @@
             startDate: 'Начало исторического периода. Чем длиннее период, тем стабильнее оценка риска.',
             endDate: 'Последний день истории, которую берём в расчёт.',
             manualPrices: 'Сюда можно вставить ряд цен вручную через пробел или запятую, если API не нужен.',
+            'single-excel-file': 'Файл с историей цен. Лучше всего колонка `price`, `close` или две колонки `date` + `price`.',
             'single-risk-preset': 'Готовый набор настроек риска. Осторожно = более строгая оценка, Агрессивно = мягче.',
             positionSize: 'Сколько единиц актива у вас в позиции. Чем больше позиция, тем больше денежный риск.',
             confidence: 'Насколько строгой должна быть оценка. 95% используется часто, 99% показывает более редкий плохой день.',
             spreadPercent: 'Оценка потери на спреде при быстрой продаже позиции.',
             liquidationDays: 'За сколько дней вы предполагаете закрывать позицию. Чем дольше выход, тем иначе считается LVaR.',
             'portfolio-risk-preset': 'Тот же смысл, что и в одном активе, но для портфельного расчёта.',
+            'portfolio-excel-file': 'Файл с составом портфеля. Нужны `ticker` или `figi`, а также `weight`.',
             'port-start': 'Начало периода, на котором строится совместная история активов.',
             'port-end': 'Конец периода для портфельной истории.',
             'moex-simple-market': 'Выберите, какой рынок MOEX хотите просмотреть: акции, облигации или фьючерсы.',
@@ -1675,7 +1824,7 @@
                     <div class="card-body py-2">
                         <label class="form-label small mb-1">${escapeHtml(underlyingId)} return shock</label>
                         <input type="number" class="form-control form-control-sm stress-shock-input" data-underlying-id="${escapeHtml(underlyingId)}" value="${escapeHtml(String(preferredValues[underlyingId] ?? 0))}" step="0.01">
-                        <div class="field-help">Шок доходности для всех позиций с этим базовым активом. `-0.10` означает падение на 10%.</div>
+                        <div class="field-help">Шок доходности для всех позиций с этим базовым активом. Значение -0.10 означает падение на 10%.</div>
                     </div>
                 </div>
             `).join('');
@@ -1827,7 +1976,7 @@
                             <input type="text" class="form-control form-control-sm" data-field="rate" value="${escapeHtml(row.rate || '')}" placeholder="10%">
                         </div>
                         <div class="col-2">
-                            <button type="button" class="btn btn-outline-danger btn-sm w-100" data-action="remove-bond-curve-row">X</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm w-100" data-action="remove-bond-curve-row">Убрать</button>
                         </div>
                     </div>
                     <div class="field-help mt-1">Точка ${index + 1}: срок и соответствующая ставка на кривой.</div>
@@ -1848,7 +1997,7 @@
                             <input type="text" class="form-control form-control-sm" data-field="rate_1y" value="${escapeHtml(row.rate_1y || '')}" placeholder="10%">
                         </div>
                         <div class="col-2">
-                            <button type="button" class="btn btn-outline-danger btn-sm w-100" data-action="remove-bond-scenario-row">X</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm w-100" data-action="remove-bond-scenario-row">Убрать</button>
                         </div>
                     </div>
                     <div class="field-help mt-1">Сценарий ${index + 1}: какой будет ставка на сроке 1 год.</div>
@@ -2003,6 +2152,12 @@
             node.innerHTML = '';
         };
 
+        const clearFileInput = (id) => {
+            const node = document.getElementById(id);
+            if (!node) return;
+            node.value = '';
+        };
+
         const clearAllInlineFeedback = () => [
             'single-feedback',
             'portfolio-feedback',
@@ -2038,6 +2193,163 @@
             const node = document.getElementById(id);
             if (!node) return;
             node.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(body)}</span>`;
+        };
+
+        const renderExplanationBox = (explanation) => {
+            if (!explanation) return '<p class="soft-note">Интерпретация пока не готова.</p>';
+            const severity = explanation.severity === 'green'
+                ? 'success'
+                : (explanation.severity === 'yellow' ? 'warning' : 'danger');
+            const takeaways = (explanation.takeaways || [])
+                .map((item) => `<li>${escapeHtml(item)}</li>`)
+                .join('');
+            const nextSteps = (explanation.next_steps || [])
+                .map((item) => `<li>${escapeHtml(item)}</li>`)
+                .join('');
+            return `
+                <div class="alert alert-${severity} mb-0">
+                    <strong>${escapeHtml(explanation.headline || explanation.label || 'Interpretation')}</strong>
+                    <div class="small mt-1 mb-2">${escapeHtml(explanation.summary || '')}</div>
+                    ${takeaways ? `<div class="small fw-semibold mb-1">Key takeaways</div><ul class="mb-2 small">${takeaways}</ul>` : ''}
+                    ${nextSteps ? `<div class="small fw-semibold mb-1">What to do next</div><ul class="mb-0 small">${nextSteps}</ul>` : ''}
+                </div>
+            `;
+        };
+
+        const renderCopilotBox = (copilot) => {
+            if (!copilot) return '<p class="soft-note">Risk Copilot пока не доступен.</p>';
+
+            const severity = copilot.severity === 'green'
+                ? 'success'
+                : (copilot.severity === 'yellow' ? 'warning' : 'danger');
+
+            const signals = (copilot.signals || []).map((signal) => {
+                const pillClass = signal.severity === 'green'
+                    ? 'bg-success-subtle text-success-emphasis'
+                    : (signal.severity === 'yellow'
+                        ? 'bg-warning-subtle text-warning-emphasis'
+                        : 'bg-danger-subtle text-danger-emphasis');
+                return `
+                    <div class="copilot-signal">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div class="signal-label">${escapeHtml(signal.label || 'Signal')}</div>
+                            <span class="badge ${pillClass}">${escapeHtml((signal.severity || 'info').toUpperCase())}</span>
+                        </div>
+                        <div class="signal-value">${escapeHtml(signal.value || '--')}</div>
+                        <div class="signal-text">${escapeHtml(signal.explanation || '')}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const actions = (copilot.actions || [])
+                .map((item) => `<li>${escapeHtml(item)}</li>`)
+                .join('');
+            return `
+                <div class="copilot-panel">
+                    <div class="title-row">
+                        <div>
+                            <div class="headline">${escapeHtml(copilot.title || 'Risk Copilot')}</div>
+                            <div class="subtitle">${escapeHtml(copilot.one_liner || '')}</div>
+                        </div>
+                        <span class="badge bg-${severity}">${escapeHtml((copilot.severity || 'info').toUpperCase())}</span>
+                    </div>
+                    <div class="alert alert-${severity} py-2 small mb-3">${escapeHtml(copilot.main_message || '')}</div>
+                    <div class="copilot-grid">${signals}</div>
+                    ${actions ? `<div class="small fw-semibold mb-1">Что можно сделать дальше</div><ul class="small mb-3">${actions}</ul>` : ''}
+                </div>
+            `;
+        };
+
+        const renderHedgeConstructor = (hedgeData, mode = 'single') => {
+            if (!hedgeData || !Array.isArray(hedgeData.scenarios) || hedgeData.scenarios.length === 0) {
+                return '<p class="soft-note">Готовых hedge-идей пока нет.</p>';
+            }
+
+            const cards = hedgeData.scenarios.map((scenario) => {
+                const severity = scenario.severity === 'green'
+                    ? 'success'
+                    : (scenario.severity === 'yellow' ? 'warning' : 'danger');
+                const afterVar = mode === 'portfolio'
+                    ? fmtCurrency(scenario.after?.var_value)
+                    : fmtCurrency(scenario.after?.var_loss);
+                const beforeVar = mode === 'portfolio'
+                    ? fmtCurrency(scenario.before?.var_value)
+                    : fmtCurrency(scenario.before?.var_loss);
+                const afterShare = safeNumber(scenario.after?.loss_share_pct, 2);
+                const improvement = safeNumber(scenario.after?.improvement_pct, 1);
+                const notes = (scenario.notes || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+                const weightsPreview = scenario.after?.weights_preview
+                    ? Object.entries(scenario.after.weights_preview)
+                        .map(([key, value]) => `<span class="helper-chip">${escapeHtml(key)}: ${escapeHtml(String(value))}%</span>`)
+                        .join(' ')
+                    : '';
+                const quickAction = scenario.quick_action
+                    ? `<button
+                            type="button"
+                            class="btn btn-outline-dark btn-sm mt-2"
+                            data-action="apply-hedge-scenario"
+                            data-mode="${escapeHtml(mode)}"
+                            data-payload="${escapeHtml(JSON.stringify(scenario.quick_action))}">
+                                ${escapeHtml(scenario.quick_action.label || 'Применить')}
+                       </button>`
+                    : '';
+
+                return `
+                    <div class="hedge-card">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div class="hedge-title">${escapeHtml(scenario.title || 'Hedge idea')}</div>
+                            <span class="badge bg-${severity}">${escapeHtml((scenario.severity || 'info').toUpperCase())}</span>
+                        </div>
+                        <div class="hedge-copy">${escapeHtml(scenario.description || '')}</div>
+                        <div class="hedge-metrics">
+                            <div class="hedge-metric">
+                                <div class="small-label">До</div>
+                                <div class="big-value">${beforeVar}</div>
+                            </div>
+                            <div class="hedge-metric">
+                                <div class="small-label">После</div>
+                                <div class="big-value">${afterVar}</div>
+                            </div>
+                            <div class="hedge-metric">
+                                <div class="small-label">Доля потери</div>
+                                <div class="big-value">${afterShare}%</div>
+                            </div>
+                            <div class="hedge-metric">
+                                <div class="small-label">Улучшение</div>
+                                <div class="big-value">${improvement}%</div>
+                            </div>
+                        </div>
+                        <div class="small mb-2"><strong>Что сделать:</strong> ${escapeHtml(scenario.action || '')}</div>
+                        ${weightsPreview ? `<div class="quick-actions mb-2">${weightsPreview}</div>` : ''}
+                        ${quickAction}
+                        ${notes ? `<div class="small fw-semibold mb-1">Что важно помнить</div><ul class="small mb-0">${notes}</ul>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            const footerAction = hedgeData.option_bridge
+                ? `
+                    <div class="mt-3 pt-2 border-top">
+                        <div class="small mb-2"><strong>Нелинейный хедж:</strong> если вы хотите защиту от падения без полного отказа от upside, изучите protective put во вкладке Options.</div>
+                        <button
+                            type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            data-action="apply-hedge-bridge"
+                            data-payload="${escapeHtml(JSON.stringify(hedgeData.option_bridge))}">
+                            ${escapeHtml(hedgeData.option_bridge.label || 'Открыть опционный хедж')}
+                        </button>
+                    </div>
+                `
+                : '';
+
+            return `
+                <div class="copilot-panel">
+                    <div class="headline">${escapeHtml(hedgeData.title || 'Hedge Constructor')}</div>
+                    <div class="subtitle">${escapeHtml(hedgeData.summary || '')}</div>
+                    <div class="hedge-grid">${cards}</div>
+                    ${footerAction}
+                </div>
+            `;
         };
 
         const setResultCards = (id, metrics) => {
@@ -2091,6 +2403,90 @@
                 ? 'Выберите рынок, инструмент и период. Мы подтянем историю и обновим доступные параметры.'
                 : 'Загрузите instrument list, option board или candles и передавайте данные в деривативные экраны.';
             setStatusStrip('moex-workflow-output', moexTitle, moexBody);
+        };
+
+        const showForwardTabFromHedge = () => {
+            if (currentExperienceMode !== 'pro') {
+                applyExperienceMode('pro');
+            }
+            bootstrap.Tab.getOrCreateInstance(document.getElementById('forward-pricing-tab')).show();
+        };
+
+        const showOptionTabFromHedge = () => {
+            if (currentExperienceMode !== 'pro') {
+                applyExperienceMode('pro');
+            }
+            bootstrap.Tab.getOrCreateInstance(document.getElementById('option-pricing-tab')).show();
+        };
+
+        const applyForwardHedgeSuggestion = (payload) => {
+            showForwardTabFromHedge();
+            document.getElementById('fp-type').value = payload.instrument_type || 'futures';
+            document.getElementById('fp-spot').value = String(Number(payload.spot ?? 100));
+            document.getElementById('fp-entry-price').value = String(Number(payload.entry_price ?? payload.spot ?? 100));
+            document.getElementById('fp-maturity').value = String(Number(payload.maturity_years ?? 0.25));
+            document.getElementById('fp-rate').value = String(Number(payload.rate ?? 0.05));
+            document.getElementById('fp-income-yield').value = String(Number(payload.income_yield ?? 0));
+            document.getElementById('fp-quantity').value = String(Number(payload.quantity ?? 1));
+            document.getElementById('fp-multiplier').value = String(Number(payload.multiplier ?? 1));
+            document.getElementById('fp-scenario-spot').value = String(Number(payload.scenario_spot ?? payload.spot ?? 100));
+
+            setStatusStrip(
+                'forward-context-output',
+                'Шаблон хеджа загружен в Futures & SPFI',
+                `Из Hedge Constructor автоматически скопирован быстрый шаблон линейного хеджа. Hedge ratio: ${safeNumber((payload.hedge_ratio || 0) * 100, 1)}%.`
+            );
+            setInlineFeedback(
+                'forward-feedback',
+                'Параметры линейного хеджа уже подставлены. Проверьте срок и ставку, затем нажмите Calculate Futures / SPFI.',
+                'success',
+                'Шаблон хеджа загружен'
+            );
+        };
+
+        const applyPortfolioWeightsSuggestion = (payload) => {
+            const weights = Array.isArray(payload.weights) ? payload.weights : [];
+            if (!weights.length || weights.length !== portfolioItems.length) {
+                setInlineFeedback(
+                    'portfolio-feedback',
+                    'Не удалось применить веса: структура текущего портфеля не совпадает со структурой сценария.',
+                    'warning',
+                    'Сценарий не применён'
+                );
+                return;
+            }
+
+            portfolioItems = portfolioItems.map((item, index) => ({
+                ...item,
+                weight: Number(weights[index]) || 0,
+            }));
+            renderPortfolioTable();
+            setInlineFeedback(
+                'portfolio-feedback',
+                'Новые веса применены в таблицу. Теперь можно сразу пересчитать риск портфеля и сравнить результат.',
+                'success',
+                'Весы обновлены'
+            );
+        };
+
+        const applyOptionHedgeSuggestion = (payload) => {
+            showOptionTabFromHedge();
+            document.getElementById('op-type').value = payload.option_type || 'put';
+            document.getElementById('op-spot').value = String(Number(payload.spot ?? 100));
+            document.getElementById('op-strike').value = String(Number(payload.strike ?? 90));
+            document.getElementById('op-maturity').value = String(Number(payload.maturity_years ?? 0.25));
+            document.getElementById('op-rate').value = String(Number(payload.rate ?? 0.05));
+            document.getElementById('op-volatility').value = String(Number(payload.volatility ?? 0.25));
+            document.getElementById('op-dividend').value = String(Number(payload.dividend_yield ?? 0));
+            document.getElementById('op-quantity').value = String(Number(payload.quantity ?? 1));
+            document.getElementById('op-multiplier').value = String(Number(payload.multiplier ?? 1));
+            copyOptionInputsToRisk();
+            setInlineFeedback(
+                'option-feedback',
+                'Шаблон protective put уже подставлен. Проверьте strike и volatility, затем посчитайте цену и Greeks или сразу переходите в Option Risk.',
+                'success',
+                'Опционный хедж подготовлен'
+            );
         };
 
         const confidenceToZ = (confidence) => {
@@ -2316,6 +2712,40 @@
             );
         };
 
+        const handleHedgeScenarioAction = (event) => {
+            const button = event.target.closest('button[data-action="apply-hedge-scenario"]');
+            if (!button) return;
+
+            try {
+                const action = JSON.parse(button.dataset.payload || '{}');
+                if (action.kind === 'apply_forward_hedge') {
+                    applyForwardHedgeSuggestion(action.payload || {});
+                } else if (action.kind === 'apply_portfolio_weights') {
+                    applyPortfolioWeightsSuggestion(action.payload || {});
+                }
+            } catch (error) {
+                console.error('Failed to apply hedge suggestion', error);
+            }
+        };
+
+        const handleHedgeBridgeAction = (event) => {
+            const button = event.target.closest('button[data-action="apply-hedge-bridge"]');
+            if (!button) return;
+
+            try {
+                const action = JSON.parse(button.dataset.payload || '{}');
+                if (action.kind === 'apply_option_hedge') {
+                    applyOptionHedgeSuggestion(action.payload || {});
+                }
+            } catch (error) {
+                console.error('Failed to apply hedge bridge', error);
+            }
+        };
+
+        document.getElementById('single-hedge-output').addEventListener('click', handleHedgeScenarioAction);
+        document.getElementById('portfolio-hedge-output').addEventListener('click', handleHedgeScenarioAction);
+        document.getElementById('single-hedge-output').addEventListener('click', handleHedgeBridgeAction);
+
         // --- SINGLE ASSET ---
         document.querySelectorAll('#modeTabs button').forEach(btn => {
             btn.addEventListener('shown.bs.tab', e => currentMode = e.target.id.replace('-tab', ''));
@@ -2355,6 +2785,40 @@
             } catch (e) {
                 setInlineFeedback('single-feedback', e.message, 'danger', 'Не удалось выполнить поиск');
             } finally { hideLoading(); }
+        });
+
+        document.getElementById('importSingleExcelBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('single-excel-file');
+            const selectedFile = fileInput.files && fileInput.files[0];
+            if (!selectedFile) {
+                setInlineFeedback('single-feedback', 'Выберите Excel или CSV-файл с рядом цен.', 'warning', 'Файл не выбран');
+                return;
+            }
+
+            showLoading();
+            try {
+                clearInlineFeedback('single-feedback');
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                const data = await apiRequest('/api/import_prices_file', {
+                    method: 'POST',
+                    body: formData
+                }, 'Не удалось импортировать ряд цен из файла.');
+
+                document.getElementById('manualPrices').value = data.manual_prices_text || '';
+                bootstrap.Tab.getOrCreateInstance(document.getElementById('manual-tab')).show();
+                setInlineFeedback(
+                    'single-feedback',
+                    `Импортировано ${data.observations} наблюдений из файла ${data.filename}. Ряд цен уже подставлен в ручной режим.`,
+                    'success',
+                    'Файл загружен'
+                );
+            } catch (e) {
+                setInlineFeedback('single-feedback', e.message, 'danger', 'Не удалось импортировать файл');
+            } finally {
+                clearFileInput('single-excel-file');
+                hideLoading();
+            }
         });
 
         document.getElementById('calculateBtn').addEventListener('click', async () => {
@@ -2402,7 +2866,10 @@
                     <div class="alert alert-${riskColor} mb-0 py-2">
                         <strong>${escapeHtml(riskStatus.label)}</strong>. Это около ${safeNumber(riskStatus.loss_share_pct, 2)}% от размера позиции.
                         <div class="small mt-1">${escapeHtml(riskStatus.summary || '')}</div>
-                    </div>`;
+                    </div>
+                    <div class="mt-2">${renderExplanationBox(data.explanation)}</div>`;
+                document.getElementById('single-copilot-output').innerHTML = renderCopilotBox(data.copilot);
+                document.getElementById('single-hedge-output').innerHTML = renderHedgeConstructor(data.hedge_constructor, 'single');
 
                 if (data.candles && data.candles.length > 0) {
                     const trace = {
@@ -2423,6 +2890,8 @@
                     document.getElementById('chartContainer').innerHTML = '<p class="text-muted text-center mt-3">История не доступна для графика.</p>';
                 }
             } catch (e) {
+                document.getElementById('single-copilot-output').innerHTML = '';
+                document.getElementById('single-hedge-output').innerHTML = '';
                 setInlineFeedback('single-feedback', e.message, 'danger', 'Не удалось рассчитать риск');
             } finally { hideLoading(); }
         });
@@ -2492,6 +2961,48 @@
             renderPortfolioTable();
         };
 
+        document.getElementById('importPortfolioExcelBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('portfolio-excel-file');
+            const selectedFile = fileInput.files && fileInput.files[0];
+            if (!selectedFile) {
+                setInlineFeedback('portfolio-feedback', 'Выберите Excel или CSV-файл с колонками ticker/figi и weight.', 'warning', 'Файл не выбран');
+                return;
+            }
+
+            showLoading();
+            try {
+                clearInlineFeedback('portfolio-feedback');
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                const data = await apiRequest('/api/import_portfolio_file', {
+                    method: 'POST',
+                    body: formData
+                }, 'Не удалось импортировать состав портфеля.');
+
+                portfolioItems = (data.rows || []).map((item) => ({
+                    ticker: item.ticker || item.figi || 'UNKNOWN',
+                    figi: item.figi || '',
+                    weight: Number(item.weight) || 0,
+                }));
+                renderPortfolioTable();
+
+                const unresolvedText = data.missing_figi_count > 0
+                    ? ` ${data.missing_figi_count} строк пока без FIGI: их стоит проверить вручную.`
+                    : '';
+                setInlineFeedback(
+                    'portfolio-feedback',
+                    `Импортировано ${data.row_count} строк из файла ${data.filename}.${unresolvedText}`,
+                    'success',
+                    'Портфель загружен'
+                );
+            } catch (e) {
+                setInlineFeedback('portfolio-feedback', e.message, 'danger', 'Не удалось импортировать портфель');
+            } finally {
+                clearFileInput('portfolio-excel-file');
+                hideLoading();
+            }
+        });
+
         document.getElementById('calc-portfolio-btn').addEventListener('click', async () => {
             if (portfolioItems.length < 2) {
                 setInlineFeedback('portfolio-feedback', 'Добавьте хотя бы 2 актива, чтобы оценить риск портфеля.', 'warning', 'Недостаточно активов');
@@ -2514,6 +3025,9 @@
                 document.getElementById('port-results').classList.remove('d-none');
                 document.getElementById('port-placeholder').classList.add('d-none');
                 document.getElementById('allocation-card').classList.remove('d-none');
+                document.getElementById('portfolio-risk-status').innerHTML = renderExplanationBox(data.portfolio_status);
+                document.getElementById('portfolio-copilot-output').innerHTML = renderCopilotBox(data.portfolio_copilot);
+                document.getElementById('portfolio-hedge-output').innerHTML = renderHedgeConstructor(data.portfolio_hedge_constructor, 'portfolio');
 
                 document.getElementById('port-var-val').innerText = fmtCurrency(data.portfolio_metrics.var_value);
                 document.getElementById('port-vol').innerText = (data.portfolio_metrics.annual_volatility * 100).toFixed(2);
@@ -2586,6 +3100,8 @@
                 }, {responsive: true});
 
             } catch (e) {
+                document.getElementById('portfolio-copilot-output').innerHTML = '';
+                document.getElementById('portfolio-hedge-output').innerHTML = '';
                 setInlineFeedback('portfolio-feedback', e.message, 'danger', 'Не удалось рассчитать портфель');
             } finally { hideLoading(); }
         });

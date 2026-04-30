@@ -3,6 +3,7 @@ uvicorn
 jinja2
 python-multipart
 pandas
+openpyxl
 plotly
 pydantic
 grpcio

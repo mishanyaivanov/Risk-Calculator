@@ -10,3 +10,7 @@ from . import forward_pricing
 from . import linear_risk
 from . import moex_service
 from . import bond_swap
+from . import excel_import
+from . import explainability
+from . import risk_copilot
+from . import hedge_constructor

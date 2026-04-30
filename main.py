@@ -1,5 +1,6 @@
 ﻿from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi import UploadFile, File
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from typing import Any, List, Optional, Dict
@@ -41,6 +42,13 @@ from services.option_var import (
 from services.forward_pricing import price_linear_derivative
 from services.linear_risk import linear_derivative_var
 from services.bond_swap import evaluate_bond_swap_package
+from services.excel_import import parse_price_series_file, parse_portfolio_file
+from services.explainability import build_single_asset_explanation, build_portfolio_explanation
+from services.risk_copilot import build_single_asset_copilot, build_portfolio_copilot
+from services.hedge_constructor import (
+    build_single_asset_hedge_constructor,
+    build_portfolio_hedge_constructor,
+)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -107,6 +115,26 @@ def resolve_tinkoff_figi(figi: Optional[str], instrument_query: Optional[str], t
         return str(valid_results[0]["figi"])
 
     raise ValueError("Several instruments match the query. Please click one item in the search results list.")
+
+
+def try_resolve_portfolio_figi(ticker: str, token: Optional[str]) -> Optional[str]:
+    if not ticker or not has_real_tinkoff_token(token):
+        return None
+
+    try:
+        results = find_instruments(ticker, token)
+    except Exception:
+        return None
+
+    ticker_upper = ticker.strip().upper()
+    for item in results:
+        if str(item.get("ticker", "")).upper() == ticker_upper and item.get("figi"):
+            return str(item["figi"])
+
+    for item in results:
+        if item.get("figi"):
+            return str(item["figi"])
+    return None
 
 class CalculationRequest(BaseModel):
     mode: str
@@ -260,6 +288,66 @@ async def search_instrument(query: str):
     results = find_instruments(query, token)
     return results
 
+
+@app.post("/api/import_prices_file")
+async def import_prices_file(file: UploadFile = File(...)):
+    content = b""
+    try:
+        content = await file.read()
+        if not content:
+            raise ValueError("The uploaded file is empty.")
+        return parse_price_series_file(content, file.filename or "uploaded_file")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        content = b""
+        await file.close()
+
+
+@app.post("/api/import_portfolio_file")
+async def import_portfolio_file(file: UploadFile = File(...)):
+    content = b""
+    try:
+        content = await file.read()
+        if not content:
+            raise ValueError("The uploaded file is empty.")
+
+        parsed = parse_portfolio_file(content, file.filename or "uploaded_file")
+        token = os.getenv("TINKOFF_TOKEN")
+        rows = []
+        resolved_count = 0
+        unresolved_count = 0
+
+        for row in parsed["rows"]:
+            ticker = str(row.get("ticker", "") or "").strip()
+            figi = str(row.get("figi", "") or "").strip()
+            if not figi:
+                figi = try_resolve_portfolio_figi(ticker, token) or ""
+            if figi:
+                resolved_count += 1
+            else:
+                unresolved_count += 1
+
+            rows.append(
+                {
+                    "ticker": ticker,
+                    "figi": figi,
+                    "weight": float(row["weight"]),
+                }
+            )
+
+        return {
+            **parsed,
+            "rows": rows,
+            "resolved_figi_count": resolved_count,
+            "missing_figi_count": unresolved_count,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        content = b""
+        await file.close()
+
 @app.post("/api/calculate")
 async def calculate_risk(request: CalculationRequest):
     prices = []
@@ -353,6 +441,29 @@ async def calculate_risk(request: CalculationRequest):
             var_loss=float(p_var.get("var_loss", 0.0)),
             position_value=position_value,
         )
+        explanation = build_single_asset_explanation(
+            risk_status=risk_status,
+            historical_var_loss=float(h_var.get("var_loss", 0.0)),
+            expected_shortfall_loss=float(es.get("es_loss", 0.0)),
+            lvar_loss=float(lvar_metrics.get("lvar_stressed")) if lvar_metrics.get("lvar_stressed") is not None else None,
+        )
+        copilot = build_single_asset_copilot(
+            risk_status=risk_status,
+            historical_var=h_var,
+            expected_shortfall=es,
+            parametric_var=p_var,
+            lvar=lvar_metrics,
+            confidence=request.confidence,
+        )
+        hedge_constructor = build_single_asset_hedge_constructor(
+            position_value=position_value,
+            position_size=request.position_size,
+            last_price=last_price,
+            parametric_var_loss=float(p_var.get("var_loss", 0.0)),
+            historical_var_loss=float(h_var.get("var_loss", 0.0)),
+            expected_shortfall_loss=float(es.get("es_loss", 0.0)),
+            stressed_lvar_loss=float(lvar_metrics.get("lvar_stressed")) if lvar_metrics.get("lvar_stressed") is not None else None,
+        )
 
         return {
             "prices": prices,
@@ -365,6 +476,9 @@ async def calculate_risk(request: CalculationRequest):
             "parametric_var": p_var,
             "lvar": lvar_metrics,
             "risk_status": risk_status,
+            "explanation": explanation,
+            "copilot": copilot,
+            "hedge_constructor": hedge_constructor,
             "pnl_series": pnl
         }
 
@@ -386,7 +500,11 @@ async def calculate_portfolio(request: PortfolioRequest):
         weights_list = []
         
         for item in request.items:
-            candles = get_candles(item.figi, request.start_date, request.end_date, token)
+            figi_to_use = item.figi or try_resolve_portfolio_figi(item.ticker, token)
+            if not figi_to_use:
+                continue
+
+            candles = get_candles(figi_to_use, request.start_date, request.end_date, token)
             if not candles or len(candles) < 2:
                 continue 
             
@@ -430,6 +548,28 @@ async def calculate_portfolio(request: PortfolioRequest):
         portfolio_cum_return = np.cumprod(1 + portfolio_daily_returns)
         
         assets_cum_returns = (1 + full_df).cumprod()
+        asset_names = full_df.columns.tolist()
+        portfolio_status = build_portfolio_explanation(
+            portfolio_metrics=portfolio_metrics,
+            weights=weights_array.tolist(),
+            asset_names=asset_names,
+            correlation_matrix=full_df.corr().to_dict(),
+            portfolio_value=request.portfolio_value,
+        )
+        portfolio_copilot = build_portfolio_copilot(
+            portfolio_metrics=portfolio_metrics,
+            weights=weights_array.tolist(),
+            asset_names=asset_names,
+            correlation_matrix=full_df.corr().to_dict(),
+            portfolio_value=request.portfolio_value,
+        )
+        portfolio_hedge_constructor = build_portfolio_hedge_constructor(
+            returns_matrix=returns_matrix,
+            weights=weights_array.tolist(),
+            asset_names=asset_names,
+            confidence=request.confidence,
+            portfolio_value=request.portfolio_value,
+        )
         
         return {
             "portfolio_metrics": portfolio_metrics,
@@ -437,7 +577,10 @@ async def calculate_portfolio(request: PortfolioRequest):
             "dates": full_df.index.strftime('%Y-%m-%d').tolist(),
             "assets_cumulative_returns": assets_cum_returns.to_dict(),
             "portfolio_cumulative_return": portfolio_cum_return.tolist(),
-            "efficient_frontier": frontier_data
+            "efficient_frontier": frontier_data,
+            "portfolio_status": portfolio_status,
+            "portfolio_copilot": portfolio_copilot,
+            "portfolio_hedge_constructor": portfolio_hedge_constructor,
         }
 
     except HTTPException:
