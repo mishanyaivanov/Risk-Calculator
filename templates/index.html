@@ -522,6 +522,11 @@
                             <div id="single-risk-status" class="mb-3"></div>
                             <div id="single-copilot-output" class="mb-3"></div>
                             <div id="single-hedge-output" class="mb-3"></div>
+                            <div class="quick-actions mb-3">
+                                <button type="button" class="btn btn-outline-dark btn-sm" id="create-single-report-btn">Создать PDF-отчёт</button>
+                                <a class="btn btn-dark btn-sm d-none" id="download-single-report-btn" href="#" download>Скачать PDF</a>
+                            </div>
+                            <div class="soft-note mb-3 d-none" id="single-report-status"></div>
 
                             <div class="card">
                                 <div class="card-header">История цены</div>
@@ -627,6 +632,11 @@ GAZP,40</pre>
                             <div id="portfolio-risk-status" class="mb-3"></div>
                             <div id="portfolio-copilot-output" class="mb-3"></div>
                             <div id="portfolio-hedge-output" class="mb-3"></div>
+                            <div class="quick-actions mb-3">
+                                <button type="button" class="btn btn-outline-dark btn-sm" id="create-portfolio-report-btn">Создать PDF-отчёт</button>
+                                <a class="btn btn-dark btn-sm d-none" id="download-portfolio-report-btn" href="#" download>Скачать PDF</a>
+                            </div>
+                            <div class="soft-note mb-3 d-none" id="portfolio-report-status"></div>
                             <!-- Portfolio Metrics -->
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
@@ -667,7 +677,7 @@ GAZP,40</pre>
 
                             <!-- Correlation Matrix -->
                             <div class="card">
-                                <div class="card-header">Correlation Matrix</div>
+                                <div class="card-header">Корреляционная матрица</div>
                                 <div class="card-body p-2">
                                     <div id="correlation-matrix" style="height: 350px;"></div>
                                 </div>
@@ -2137,6 +2147,12 @@ GAZP,40</pre>
         let portfolioItems = [];
         let currentMode = 'tinkoff';
         let currentExperienceMode = localStorage.getItem('risk-ui-mode') || 'novice';
+        let lastSingleCalculation = null;
+        let lastSingleResult = null;
+        let lastPortfolioCalculation = null;
+        let lastPortfolioResult = null;
+        let lastSingleReportMeta = null;
+        let lastPortfolioReportMeta = null;
 
         const setInlineFeedback = (id, message, type = 'danger', title = 'Что-то пошло не так') => {
             const node = document.getElementById(id);
@@ -2188,6 +2204,52 @@ GAZP,40</pre>
             }
             return payload;
         };
+
+        const setReportReadyState = (prefix, meta = null) => {
+            const statusNode = document.getElementById(`${prefix}-report-status`);
+            const downloadNode = document.getElementById(`download-${prefix}-report-btn`);
+            if (!statusNode || !downloadNode) return;
+
+            if (!meta) {
+                statusNode.classList.add('d-none');
+                statusNode.textContent = '';
+                downloadNode.classList.add('d-none');
+                downloadNode.removeAttribute('href');
+                downloadNode.removeAttribute('download');
+                return;
+            }
+
+            statusNode.classList.remove('d-none');
+            statusNode.textContent = meta.message || 'Отчёт сформирован и готов к скачиванию.';
+            downloadNode.href = meta.download_url;
+            downloadNode.download = meta.filename || 'risk-report.pdf';
+            downloadNode.classList.remove('d-none');
+        };
+
+        const capturePlotAsDataUrl = async (id, options = {}) => {
+            const node = document.getElementById(id);
+            if (!node || typeof Plotly === 'undefined' || !node.data) return null;
+            try {
+                return await Plotly.toImage(node, {
+                    format: 'png',
+                    width: options.width || 1200,
+                    height: options.height || 700,
+                });
+            } catch (_error) {
+                return null;
+            }
+        };
+
+        const buildSingleReportCharts = async () => ({
+            price_history: await capturePlotAsDataUrl('chartContainer', { width: 1200, height: 700 }),
+        });
+
+        const buildPortfolioReportCharts = async () => ({
+            frontier: await capturePlotAsDataUrl('frontier-chart', { width: 1200, height: 700 }),
+            cumulative: await capturePlotAsDataUrl('cumulative-chart', { width: 1200, height: 700 }),
+            correlation: await capturePlotAsDataUrl('correlation-matrix', { width: 900, height: 700 }),
+            allocation: await capturePlotAsDataUrl('allocation-chart', { width: 800, height: 600 }),
+        });
 
         const setStatusStrip = (id, title, body) => {
             const node = document.getElementById(id);
@@ -2848,6 +2910,10 @@ GAZP,40</pre>
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 }, 'Не удалось рассчитать риск.');
+                lastSingleCalculation = payload;
+                lastSingleResult = data;
+                lastSingleReportMeta = null;
+                setReportReadyState('single', null);
 
                 document.getElementById('results').classList.remove('d-none');
                 document.getElementById('results-placeholder').classList.add('d-none');
@@ -2890,10 +2956,51 @@ GAZP,40</pre>
                     document.getElementById('chartContainer').innerHTML = '<p class="text-muted text-center mt-3">История не доступна для графика.</p>';
                 }
             } catch (e) {
+                lastSingleCalculation = null;
+                lastSingleResult = null;
+                lastSingleReportMeta = null;
+                setReportReadyState('single', null);
                 document.getElementById('single-copilot-output').innerHTML = '';
                 document.getElementById('single-hedge-output').innerHTML = '';
                 setInlineFeedback('single-feedback', e.message, 'danger', 'Не удалось рассчитать риск');
             } finally { hideLoading(); }
+        });
+
+        document.getElementById('create-single-report-btn').addEventListener('click', async () => {
+            if (!lastSingleCalculation || !lastSingleResult) {
+                setInlineFeedback('single-feedback', 'Сначала выполните расчёт, а потом скачайте отчёт.', 'warning', 'Нет данных для отчёта');
+                return;
+            }
+
+            showLoading();
+            try {
+                clearInlineFeedback('single-feedback');
+                const chartImages = await buildSingleReportCharts();
+                const meta = await apiRequest('/api/report/single/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ calculation: lastSingleCalculation, result: lastSingleResult, chart_images: chartImages })
+                }, 'Не удалось сформировать PDF-отчёт.');
+                lastSingleReportMeta = meta;
+                setReportReadyState('single', meta);
+                setInlineFeedback('single-feedback', meta.message || 'Отчёт сформирован.', 'success', 'Отчёт готов');
+            } catch (e) {
+                lastSingleReportMeta = null;
+                setReportReadyState('single', null);
+                setInlineFeedback('single-feedback', e.message, 'danger', 'Не удалось сформировать отчёт');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        document.getElementById('download-single-report-btn').addEventListener('click', (event) => {
+            if (!lastSingleReportMeta?.download_url) {
+                event.preventDefault();
+                setInlineFeedback('single-feedback', 'Сначала сформируйте отчёт.', 'warning', 'Нет готового отчёта');
+                return;
+            }
+            event.currentTarget.href = lastSingleReportMeta.download_url;
+            event.currentTarget.download = lastSingleReportMeta.filename || 'single-asset-risk-report.pdf';
         });
 
         // --- PORTFOLIO ---
@@ -3021,6 +3128,10 @@ GAZP,40</pre>
                 const data = await apiRequest('/api/calculate_portfolio', {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
                 }, 'Не удалось рассчитать риск портфеля.');
+                lastPortfolioCalculation = payload;
+                lastPortfolioResult = data;
+                lastPortfolioReportMeta = null;
+                setReportReadyState('portfolio', null);
 
                 document.getElementById('port-results').classList.remove('d-none');
                 document.getElementById('port-placeholder').classList.add('d-none');
@@ -3043,6 +3154,7 @@ GAZP,40</pre>
                     text: z.map(row => row.map(val => val.toFixed(2))), texttemplate: "%{text}", hoverinfo: 'z'
                 }], {
                     margin: {l: 50, r: 50, t: 20, b: 50},
+                    yaxis: {autorange: 'reversed'},
                 }, {responsive: true});
 
                 // 2. Efficient Frontier
@@ -3100,10 +3212,51 @@ GAZP,40</pre>
                 }, {responsive: true});
 
             } catch (e) {
+                lastPortfolioCalculation = null;
+                lastPortfolioResult = null;
+                lastPortfolioReportMeta = null;
+                setReportReadyState('portfolio', null);
                 document.getElementById('portfolio-copilot-output').innerHTML = '';
                 document.getElementById('portfolio-hedge-output').innerHTML = '';
                 setInlineFeedback('portfolio-feedback', e.message, 'danger', 'Не удалось рассчитать портфель');
             } finally { hideLoading(); }
+        });
+
+        document.getElementById('create-portfolio-report-btn').addEventListener('click', async () => {
+            if (!lastPortfolioCalculation || !lastPortfolioResult) {
+                setInlineFeedback('portfolio-feedback', 'Сначала выполните расчёт портфеля, а потом скачайте отчёт.', 'warning', 'Нет данных для отчёта');
+                return;
+            }
+
+            showLoading();
+            try {
+                clearInlineFeedback('portfolio-feedback');
+                const chartImages = await buildPortfolioReportCharts();
+                const meta = await apiRequest('/api/report/portfolio/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ calculation: lastPortfolioCalculation, result: lastPortfolioResult, chart_images: chartImages })
+                }, 'Не удалось сформировать PDF-отчёт.');
+                lastPortfolioReportMeta = meta;
+                setReportReadyState('portfolio', meta);
+                setInlineFeedback('portfolio-feedback', meta.message || 'Отчёт сформирован.', 'success', 'Отчёт готов');
+            } catch (e) {
+                lastPortfolioReportMeta = null;
+                setReportReadyState('portfolio', null);
+                setInlineFeedback('portfolio-feedback', e.message, 'danger', 'Не удалось сформировать отчёт');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        document.getElementById('download-portfolio-report-btn').addEventListener('click', (event) => {
+            if (!lastPortfolioReportMeta?.download_url) {
+                event.preventDefault();
+                setInlineFeedback('portfolio-feedback', 'Сначала сформируйте отчёт.', 'warning', 'Нет готового отчёта');
+                return;
+            }
+            event.currentTarget.href = lastPortfolioReportMeta.download_url;
+            event.currentTarget.download = lastPortfolioReportMeta.filename || 'portfolio-risk-report.pdf';
         });
 
         // --- MOEX DATA ---

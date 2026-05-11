@@ -1,5 +1,5 @@
 ﻿from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi import UploadFile, File
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -49,9 +49,11 @@ from services.hedge_constructor import (
     build_single_asset_hedge_constructor,
     build_portfolio_hedge_constructor,
 )
+from services.reporting import build_single_asset_report, build_portfolio_report, ReportStore
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+report_store = ReportStore()
 
 
 def has_real_tinkoff_token(token: Optional[str]) -> bool:
@@ -160,6 +162,12 @@ class PortfolioRequest(BaseModel):
     end_date: str
     confidence: float = 0.95
     portfolio_value: float = 100000.0
+
+
+class ReportRequest(BaseModel):
+    calculation: Dict[str, Any]
+    result: Dict[str, Any]
+    chart_images: Optional[Dict[str, str]] = None
 
 class BacktestRequest(BaseModel):
     pnl: List[float]
@@ -587,6 +595,57 @@ async def calculate_portfolio(request: PortfolioRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/report/single/create")
+async def create_single_report(request: ReportRequest):
+    try:
+        if not request.result or not request.result.get("parametric_var"):
+            raise ValueError("Single-asset calculation data is missing. Run the calculation first.")
+        pdf_bytes = build_single_asset_report(request.calculation, request.result, request.chart_images or {})
+        report_id = report_store.save("single-asset-risk-report.pdf", pdf_bytes)
+        return {
+            "report_id": report_id,
+            "filename": "single-asset-risk-report.pdf",
+            "download_url": f"/api/report/download/{report_id}",
+            "message": "Отчёт сформирован и готов к скачиванию.",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/report/portfolio/create")
+async def create_portfolio_report(request: ReportRequest):
+    try:
+        if not request.result or not request.result.get("portfolio_metrics"):
+            raise ValueError("Portfolio calculation data is missing. Run the calculation first.")
+        pdf_bytes = build_portfolio_report(request.calculation, request.result, request.chart_images or {})
+        report_id = report_store.save("portfolio-risk-report.pdf", pdf_bytes)
+        return {
+            "report_id": report_id,
+            "filename": "portfolio-risk-report.pdf",
+            "download_url": f"/api/report/download/{report_id}",
+            "message": "Отчёт сформирован и готов к скачиванию.",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/report/download/{report_id}")
+async def download_report(report_id: str):
+    report = report_store.get(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found or expired. Generate it again.")
+    return Response(
+        content=report.content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename=\"{report.filename}\"'},
+    )
+
 
 @app.post("/api/backtest")
 async def run_backtest(request: BacktestRequest):
