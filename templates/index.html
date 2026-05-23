@@ -13,6 +13,30 @@
         .card-header { background-color: #fff; border-bottom: 1px solid #edf2f9; font-weight: 600; padding: 1rem 1.25rem; }
         .metric-value { font-size: 1.75rem; font-weight: 700; color: #2c3e50; }
         .metric-label { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; }
+        .method-link {
+            display: inline-flex;
+            align-items: center;
+            border: 0;
+            background: transparent;
+            color: #1f3a52;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 0;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-underline-offset: 0.2rem;
+        }
+        .method-link:hover,
+        .method-link:focus {
+            color: #0d6efd;
+        }
+        .method-link.on-dark {
+            color: #d9e6f2;
+        }
+        .method-link.on-dark:hover,
+        .method-link.on-dark:focus {
+            color: #ffffff;
+        }
         .chart-container { width: 100%; height: 400px; }
 
         .nav-pills .nav-link.active { background-color: #34495e; }
@@ -71,6 +95,11 @@
             font-size: 1.1rem;
             font-weight: 700;
             color: #2c3e50;
+        }
+        .result-card .method-link {
+            font-size: 0.72rem;
+            letter-spacing: 0;
+            text-transform: none;
         }
         .table-output {
             overflow-x: auto;
@@ -354,6 +383,13 @@
             border-radius: 0.75rem;
             padding: 1rem 1.1rem;
             box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.04);
+            scroll-margin-top: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        .method-card.method-highlight {
+            background: #fbfdff;
+            border-color: #1f3a52;
+            box-shadow: 0 0.5rem 1.5rem rgba(31, 58, 82, 0.16);
         }
         .method-card h3 {
             color: #1f3a52;
@@ -597,8 +633,13 @@
                                     <div class="card h-100">
                                         <div class="card-body text-center">
                                             <div class="metric-label">Потеря в плохой день (VaR)</div>
+                                            <button type="button" class="method-link" data-methodology-target="method-var">Методология</button>
                                             <div class="metric-value text-danger" id="res-var">--</div>
-                                            <div class="small text-muted mt-2">Historical: <span id="res-hvar">--</span></div>
+                                            <div class="small text-muted mt-2">
+                                                Historical:
+                                                <span id="res-hvar">--</span>
+                                                <button type="button" class="method-link ms-1" data-methodology-target="method-historical-var">как считается</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -606,6 +647,7 @@
                                     <div class="card h-100">
                                         <div class="card-body text-center">
                                             <div class="metric-label">Средняя потеря в очень плохие дни (ES)</div>
+                                            <button type="button" class="method-link" data-methodology-target="method-es">Методология</button>
                                             <div class="metric-value text-warning" id="res-es">--</div>
                                             <div class="small text-muted mt-2">Tail risk measure</div>
                                         </div>
@@ -615,6 +657,7 @@
                                     <div class="card h-100">
                                         <div class="card-body text-center">
                                             <div class="metric-label">Потеря с учётом быстрой продажи (LVaR)</div>
+                                            <button type="button" class="method-link" data-methodology-target="method-lvar">Методология</button>
                                             <div class="metric-value text-dark" id="res-lvar">--</div>
                                             <div class="small text-muted mt-2">Stressed: <span id="res-lvar-stress">--</span></div>
                                         </div>
@@ -747,6 +790,7 @@ GAZP,40</pre>
                                     <div class="card bg-dark text-white h-100">
                                         <div class="card-body text-center">
                                             <div class="metric-label text-white-50">Потеря в плохой день</div>
+                                            <button type="button" class="method-link on-dark" data-methodology-target="method-portfolio-var">Методология</button>
                                             <div class="metric-value text-white" id="port-var-val">--</div>
                                             <div class="small text-white-50 mt-2">Годовая волатильность: <span id="port-vol">--</span>%</div>
                                         </div>
@@ -972,12 +1016,12 @@ GAZP,40</pre>
                             <div class="card-header">Results</div>
                             <div class="card-body">
                                 <div class="result-grid mb-3" id="option-summary-cards">
-                                    <div class="result-card"><div class="label">Option Value</div><div class="value" id="op-card-price">--</div></div>
+                                    <div class="result-card"><div class="label">Option Value <button type="button" class="method-link" data-methodology-target="method-options-greeks">методология</button></div><div class="value" id="op-card-price">--</div></div>
                                     <div class="result-card"><div class="label">Position Delta</div><div class="value" id="op-card-delta">--</div></div>
                                     <div class="result-card"><div class="label">Position Vega</div><div class="value" id="op-card-vega">--</div></div>
                                     <div class="result-card"><div class="label">Position Theta</div><div class="value" id="op-card-theta">--</div></div>
                                 </div>
-                                <h6>Option Price & Greeks</h6>
+                                <h6>Option Price & Greeks <button type="button" class="method-link ms-1" data-methodology-target="method-options-greeks">методология</button></h6>
                                 <div class="table-responsive">
                                     <table class="table table-sm table-bordered">
                                         <thead>
@@ -1276,10 +1320,10 @@ GAZP,40</pre>
                                 <div id="ovar-summary-cards" class="result-grid mb-3">
                                     <div class="result-card"><div class="label">Delta Cash</div><div class="value">--</div></div>
                                     <div class="result-card"><div class="label">Gamma Cash</div><div class="value">--</div></div>
-                                    <div class="result-card"><div class="label">MC VaR</div><div class="value">--</div></div>
+                                    <div class="result-card"><div class="label">MC VaR <button type="button" class="method-link" data-methodology-target="method-monte-carlo">методология</button></div><div class="value">--</div></div>
                                     <div class="result-card"><div class="label">Full Reval VaR</div><div class="value">--</div></div>
                                 </div>
-                                <h6>Option VaR Approximations</h6>
+                                <h6>Option VaR Approximations <button type="button" class="method-link ms-1" data-methodology-target="method-monte-carlo">методология</button></h6>
                                 <p class="soft-note">`Delta-Normal` и `Delta-Gamma` дают быструю формульную оценку риска. Они удобны для первого взгляда, но не моделируют рынок так полно, как Monte Carlo.</p>
                                 <div class="table-responsive mb-3">
                                     <table class="table table-sm table-bordered">
@@ -1297,7 +1341,7 @@ GAZP,40</pre>
                                         </tbody>
                                     </table>
                                 </div>
-                                <h6>Monte Carlo Simulations (PnL Distribution)</h6>
+                                <h6>Monte Carlo Simulations (PnL Distribution) <button type="button" class="method-link ms-1" data-methodology-target="method-monte-carlo">методология</button></h6>
                                 <p class="soft-note">Monte Carlo = мы моделируем много возможных рыночных исходов и смотрим, как меняется PnL позиции. Это более наглядно и ближе к реальности, чем одна формула.</p>
                                 <div id="ovar-mc-chart" class="chart-container mb-3"></div>
                                 <div id="ovar-mc-output"><p class="soft-note mb-0">No MC data.</p></div>
@@ -1350,7 +1394,7 @@ GAZP,40</pre>
                         <div class="card">
                             <div class="card-header">Results</div>
                             <div class="card-body">
-                                <h6>Rolling Backtest Summary</h6>
+                                <h6>Rolling Backtest Summary <button type="button" class="method-link ms-1" data-methodology-target="method-backtesting">методология</button></h6>
                                 <div id="backtest-summary-output"><p class="soft-note">Пока данных нет.</p></div>
                                 <h6 class="mt-3">Conditional Coverage Test</h6>
                                 <div id="backtest-cc-output"><p class="soft-note">Пока данных нет.</p></div>
@@ -1515,7 +1559,7 @@ GAZP,40</pre>
                                     <div class="result-card"><div class="label">Full PV</div><div class="value">--</div></div>
                                     <div class="result-card"><div class="label">Constructions</div><div class="value">--</div></div>
                                 </div>
-                                <h6>Hedge Constructions</h6>
+                                <h6>Hedge Constructions <button type="button" class="method-link ms-1" data-methodology-target="method-bond-swap">методология</button></h6>
                                 <div id="bond-swap-constructions-output"><p class="soft-note">Пока данных нет.</p></div>
                                 <h6 class="mt-3">1Y-Rate Scenarios</h6>
                                 <div id="bond-swap-scenarios-output"><p class="soft-note">Пока данных нет.</p></div>
@@ -1533,6 +1577,7 @@ GAZP,40</pre>
             <div class="tab-pane fade" id="stress-testing" role="tabpanel">
                 <div class="section-intro">
                     <strong>Stress-сценарии.</strong> В Новичке доступны готовые стресс-пресеты для быстрой проверки одной позиции. В Профи остаётся полный режим со списком позиций и кастомными шоками.
+                    <button type="button" class="method-link ms-1" data-methodology-target="method-stress">методология</button>
                 </div>
                 <div class="alert alert-danger inline-feedback" id="stress-feedback"></div>
                 <div class="row">
@@ -1686,84 +1731,84 @@ GAZP,40</pre>
             </div>
 
             <div class="methodology-grid">
-                <article class="method-card">
+                <article class="method-card" id="method-var">
                     <h3>Value at Risk (VaR)</h3>
                     <div class="formula-pill">VaR = loss quantile</div>
                     <p>VaR показывает максимальный ожидаемый убыток за выбранный горизонт при заданном уровне доверия. Например, VaR 95% означает, что в нормальных условиях убыток не должен превышать это значение примерно в 95% наблюдений.</p>
                     <div class="method-meta">Где используется: один актив, портфель, linear risk, option Monte Carlo.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-historical-var">
                     <h3>Historical VaR</h3>
                     <div class="formula-pill">PnL history -> quantile</div>
                     <p>Исторический VaR строится по фактическим изменениям цен. Метод не требует предположения о нормальном распределении, поэтому хорошо показывает риск на реальных рыночных данных.</p>
                     <div class="method-meta">Как читать: чем глубже плохие исторические дни, тем выше исторический VaR.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-parametric-var">
                     <h3>Parametric VaR</h3>
                     <div class="formula-pill">VaR = z * sigma - mu</div>
                     <p>Параметрический VaR использует среднее, волатильность и z-score выбранного confidence level. Это быстрый и прозрачный метод, но он чувствителен к предположению о форме распределения.</p>
                     <div class="method-meta">Где используется: карточки риска по одному активу и линейным инструментам.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-es">
                     <h3>Expected Shortfall (ES)</h3>
                     <div class="formula-pill">ES = average tail loss</div>
                     <p>ES показывает средний убыток в тех сценариях, где VaR уже пробит. Эта метрика полезна, потому что отвечает не только на вопрос "где граница", но и "насколько плохо за границей".</p>
                     <div class="method-meta">Как читать: ES показывает тяжесть хвоста распределения и дополняет VaR.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-lvar">
                     <h3>Liquidity-adjusted VaR (LVaR)</h3>
                     <div class="formula-pill">LVaR = VaR + liquidity cost</div>
                     <p>LVaR добавляет к рыночному риску стоимость выхода из позиции: bid-ask spread, стресс спреда и период ликвидации. Это делает оценку ближе к реальной продаже позиции.</p>
                     <div class="method-meta">Где используется: один актив, блок ликвидности и интерпретация риска.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-portfolio-var">
                     <h3>Portfolio VaR</h3>
                     <div class="formula-pill">sigma_p = sqrt(w'Covw)</div>
                     <p>Портфельный VaR учитывает веса активов и ковариационную матрицу доходностей. Поэтому риск портфеля зависит не только от отдельных активов, но и от того, насколько они движутся вместе.</p>
                     <div class="method-meta">Где используется: вкладка "Портфель", correlation matrix и efficient frontier.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-options-greeks">
                     <h3>Options and Greeks</h3>
                     <div class="formula-pill">Delta, Gamma, Vega, Theta</div>
                     <p>Для опционов цена и риск зависят не только от цены базового актива. Greeks показывают чувствительность к движению рынка, кривизне payoff, волатильности и времени.</p>
                     <div class="method-meta">Где используется: Options, Option Risk, Stress-сценарии.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-monte-carlo">
                     <h3>Monte Carlo and Full Revaluation</h3>
                     <div class="formula-pill">scenarios -> simulated PnL</div>
                     <p>Monte Carlo моделирует множество возможных рыночных сценариев. Full Revaluation переоценивает опцион в каждом сценарии, поэтому лучше отражает нелинейность, чем одна формульная аппроксимация.</p>
                     <div class="method-meta">Где используется: Option Risk и распределение PnL по сценариям.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-stress">
                     <h3>Stress Testing</h3>
                     <div class="formula-pill">market shock -> portfolio loss</div>
                     <p>Stress testing проверяет, что произойдет при заранее заданных неблагоприятных сценариях: падение рынка, рост волатильности или изменение ставок. Это не прогноз, а проверка устойчивости.</p>
                     <div class="method-meta">Где используется: Stress-сценарии и сценарная переоценка опционов.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-backtesting">
                     <h3>Backtesting</h3>
                     <div class="formula-pill">VaR breaches vs expected breaches</div>
                     <p>Backtesting сравнивает прогнозируемые риск-границы с фактическим P&amp;L. Если пробоев VaR слишком много или они идут сериями, модель может занижать риск.</p>
                     <div class="method-meta">Где используется: Model Check, Kupiec/coverage logic и ES diagnostics.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-bond-swap">
                     <h3>Bond and Swap Logic</h3>
                     <div class="formula-pill">cashflows -> present value</div>
                     <p>Облигационный блок строит денежные потоки выпуска, дисконтирует их по кривой ставок и сравнивает варианты swap-hedge. Это помогает оценить процентный риск и возможную конструкцию хеджа.</p>
                     <div class="method-meta">Где используется: Bond &amp; Swap, cashflow table и сценарии 1Y-rate.</div>
                 </article>
 
-                <article class="method-card">
+                <article class="method-card" id="method-interpretation">
                     <h3>Risk Interpretation Workflow</h3>
                     <div class="formula-pill">metric -> interpretation -> action</div>
                     <p>Практический вывод строится в три шага: какая метрика получилась, что она означает для позиции и какое действие может снизить риск. Поэтому в интерфейсе есть copilot-блоки, hedge ideas и PDF-отчеты.</p>
@@ -2666,6 +2711,25 @@ GAZP,40</pre>
             document.getElementById('workspaceViewBtn').classList.toggle('active', !isMethodology);
             document.getElementById('methodologyViewBtn').classList.toggle('active', isMethodology);
         };
+
+        const showMethodologyTopic = (methodId) => {
+            applyWorkspaceSection('methodology');
+            window.setTimeout(() => {
+                const target = document.getElementById(methodId);
+                if (!target) return;
+                document.querySelectorAll('.method-card.method-highlight').forEach(node => node.classList.remove('method-highlight'));
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                target.classList.add('method-highlight');
+                window.setTimeout(() => target.classList.remove('method-highlight'), 1800);
+            }, 80);
+        };
+
+        document.addEventListener('click', (event) => {
+            const trigger = event.target.closest('[data-methodology-target]');
+            if (!trigger) return;
+            event.preventDefault();
+            showMethodologyTopic(trigger.dataset.methodologyTarget);
+        });
 
         const applyExperienceMode = (mode) => {
             currentExperienceMode = mode;

@@ -33,6 +33,11 @@ def z_value_for_confidence(confidence: float) -> float:
     normalized_confidence = normalize_confidence(confidence)
     return float(norm.ppf(normalized_confidence))
 
+def discrete_tail_count(observations: int, alpha: float) -> int:
+    if observations <= 0:
+        raise ValueError("Number of observations must be positive.")
+    return max(1, min(observations, math.ceil(observations * alpha - 1e-12)))
+
 def pnl_from_prices(prices: List[float], position_size: float = 1.0) -> List[float]:
     if len(prices) < 2:
         return []
@@ -46,7 +51,7 @@ def historical_var_discrete(pnl: List[float], confidence: float) -> dict:
     alpha = 1.0 - confidence
     sorted_pnl = sorted(pnl)
     n = len(sorted_pnl)
-    k = max(1, math.ceil(n * alpha))
+    k = discrete_tail_count(n, alpha)
     var_pnl = sorted_pnl[k - 1]
     var_loss = max(0.0, -var_pnl)
     
@@ -65,7 +70,7 @@ def expected_shortfall_discrete(pnl: List[float], confidence: float) -> dict:
     alpha = 1.0 - confidence
     sorted_pnl = sorted(pnl)
     n = len(sorted_pnl)
-    tail_count = max(1, math.ceil(n * alpha))
+    tail_count = discrete_tail_count(n, alpha)
     tail = sorted_pnl[:tail_count]
     es_pnl = sum(tail) / tail_count
     es_loss = max(0.0, -es_pnl)

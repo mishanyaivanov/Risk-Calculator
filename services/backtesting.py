@@ -1,6 +1,8 @@
 ﻿import math
 from statistics import mean
 
+from .risk_calculator import discrete_tail_count
+
 
 def _safe_log_probability(probability: float) -> float:
     eps = 1e-12
@@ -47,7 +49,7 @@ def rolling_historical_var_es(
     for idx in range(window, len(pnl)):
         train = sorted(pnl[idx - window:idx])
         n = len(train)
-        k = max(1, math.ceil(n * alpha))
+        k = discrete_tail_count(n, alpha)
         tail = train[:k]
         var_pnl = train[k - 1]
         es_pnl = sum(tail) / k
