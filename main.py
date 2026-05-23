@@ -12,7 +12,14 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
-from services.tinkoff_service import find_instruments, get_candles
+from services.tinkoff_service import (
+    find_instruments,
+    find_instruments_live,
+    get_cache_status,
+    get_candles,
+    merge_cached_instruments,
+    rebuild_instrument_cache,
+)
 from services.risk_calculator import (
     pnl_from_prices, 
     historical_var_discrete, 
@@ -95,7 +102,7 @@ def resolve_tinkoff_figi(figi: Optional[str], instrument_query: Optional[str], t
 
     results = find_instruments(query, token)
     if not results:
-        raise ValueError("Instrument was not found in Tinkoff search. Try another ticker or use Manual mode.")
+        raise ValueError("Instrument was not found in the local Tinkoff cache. Try the live search button or use Manual mode.")
 
     query_upper = query.upper()
     exact_ticker_matches = [
@@ -286,15 +293,51 @@ async def read_root(request: Request):
 
 @app.get("/api/search")
 async def search_instrument(query: str):
+    results = find_instruments(query)
+    return {
+        "items": results,
+        "source": "cache",
+        "cache": get_cache_status(),
+    }
+
+
+@app.get("/api/search_live")
+async def search_instrument_live(query: str):
     token = os.getenv("TINKOFF_TOKEN")
     if not has_real_tinkoff_token(token):
         raise HTTPException(
             status_code=400,
             detail="TINKOFF_TOKEN is not set. Add a real token or use Manual / Random mode."
         )
-        
-    results = find_instruments(query, token)
-    return results
+
+    results = find_instruments_live(query, token)
+    if results:
+        merge_cached_instruments(results)
+    return {
+        "items": results,
+        "source": "live",
+        "cache": get_cache_status(),
+    }
+
+
+@app.post("/api/tinkoff_cache/rebuild")
+async def rebuild_tinkoff_cache():
+    token = os.getenv("TINKOFF_TOKEN")
+    if not has_real_tinkoff_token(token):
+        raise HTTPException(
+            status_code=400,
+            detail="TINKOFF_TOKEN is not set. Add a real token before refreshing the cache."
+        )
+
+    try:
+        payload = rebuild_instrument_cache(token)
+        return {
+            "status": "ok",
+            "updated_at": payload.get("updated_at"),
+            "item_count": payload.get("item_count", 0),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/import_prices_file")

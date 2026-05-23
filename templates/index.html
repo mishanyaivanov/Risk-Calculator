@@ -389,7 +389,9 @@
                                         <div class="input-group mb-2">
                                             <input type="text" class="form-control form-control-sm" id="instrumentName" placeholder="Тикер, например SBER">
                                             <button class="btn btn-outline-secondary btn-sm" type="button" id="searchBtn">Найти</button>
+                                            <button class="btn btn-outline-dark btn-sm" type="button" id="searchLiveBtn">API</button>
                                         </div>
+                                        <div class="field-help mb-2">Обычный поиск идёт по локальному кэш-файлу. Если нужного инструмента нет, нажмите маленькую кнопку `API` для живого поиска и обновления кэша.</div>
                                         <div id="searchResults" class="list-group mb-3 small" style="max-height: 150px; overflow-y: auto;"></div>
                                         <div id="selectedInstrument" class="alert alert-success py-1 px-2 d-none small mb-2"></div>
                                         <input type="hidden" id="figi">
@@ -554,6 +556,7 @@
                                 <div class="input-group mb-3">
                                     <input type="text" class="form-control form-control-sm" id="port-search-input" placeholder="Тикер, например SBER">
                                     <button class="btn btn-outline-secondary btn-sm" type="button" id="port-search-btn">Добавить</button>
+                                    <button class="btn btn-outline-dark btn-sm" type="button" id="port-search-live-btn">API</button>
                                 </div>
                                 <div id="port-search-results" class="list-group mb-3 position-absolute w-100 shadow" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
                                 <div class="mb-3">
@@ -2819,35 +2822,50 @@ GAZP,40</pre>
             document.getElementById('selectedInstrument').innerText = '';
         });
 
-        document.getElementById('searchBtn').addEventListener('click', async () => {
+        const renderSingleSearchResults = (payload, liveMode = false) => {
+            const data = payload?.items || [];
+            const list = document.getElementById('searchResults');
+            list.innerHTML = '';
+            if (data.length === 0) {
+                list.innerHTML = liveMode
+                    ? '<div class="list-group-item text-danger">Ничего не найдено даже в живом поиске.</div>'
+                    : '<div class="list-group-item text-warning">В локальном кэше ничего не найдено. Нажмите кнопку API для живого поиска.</div>';
+                return;
+            }
+            data.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                btn.innerHTML = `<span><strong>${item.ticker}</strong> <small class="text-muted">${item.name}</small></span>`;
+                btn.onclick = () => {
+                    document.getElementById('figi').value = item.figi;
+                    document.getElementById('selectedInstrument').innerText = `${item.ticker} - ${item.name}`;
+                    document.getElementById('selectedInstrument').classList.remove('d-none');
+                    list.innerHTML = '';
+                };
+                list.appendChild(btn);
+            });
+        };
+
+        const runSingleSearch = async (liveMode = false) => {
             const query = document.getElementById('instrumentName').value;
             if(!query) return;
             showLoading();
             try {
                 clearInlineFeedback('single-feedback');
-                const data = await apiRequest(`/api/search?query=${encodeURIComponent(query)}`, {}, 'Не удалось найти инструмент.');
-                const list = document.getElementById('searchResults');
-                list.innerHTML = '';
-                if (data.length === 0) {
-                    list.innerHTML = '<div class="list-group-item text-danger">Ничего не найдено.</div>';
-                    return;
+                const url = liveMode ? `/api/search_live?query=${encodeURIComponent(query)}` : `/api/search?query=${encodeURIComponent(query)}`;
+                const payload = await apiRequest(url, {}, liveMode ? 'Не удалось выполнить живой поиск.' : 'Не удалось найти инструмент.');
+                renderSingleSearchResults(payload, liveMode);
+                const cache = payload?.cache;
+                if (cache?.updated_at && liveMode) {
+                    setInlineFeedback('single-feedback', `Живой поиск выполнен. Кэш обновлён: ${cache.updated_at}.`, 'success', 'Результаты из API');
                 }
-                data.forEach(item => {
-                    const btn = document.createElement('button');
-                    btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-                    btn.innerHTML = `<span><strong>${item.ticker}</strong> <small class="text-muted">${item.name}</small></span>`;
-                    btn.onclick = () => {
-                        document.getElementById('figi').value = item.figi;
-                        document.getElementById('selectedInstrument').innerText = `${item.ticker} - ${item.name}`;
-                        document.getElementById('selectedInstrument').classList.remove('d-none');
-                        list.innerHTML = '';
-                    };
-                    list.appendChild(btn);
-                });
             } catch (e) {
-                setInlineFeedback('single-feedback', e.message, 'danger', 'Не удалось выполнить поиск');
+                setInlineFeedback('single-feedback', e.message, 'danger', liveMode ? 'Не удалось выполнить живой поиск' : 'Не удалось выполнить поиск');
             } finally { hideLoading(); }
-        });
+        };
+
+        document.getElementById('searchBtn').addEventListener('click', async () => runSingleSearch(false));
+        document.getElementById('searchLiveBtn').addEventListener('click', async () => runSingleSearch(true));
 
         document.getElementById('importSingleExcelBtn').addEventListener('click', async () => {
             const fileInput = document.getElementById('single-excel-file');
@@ -3004,34 +3022,49 @@ GAZP,40</pre>
         });
 
         // --- PORTFOLIO ---
-        document.getElementById('port-search-btn').addEventListener('click', async () => {
+        const renderPortfolioSearchResults = (payload, liveMode = false) => {
+            const data = payload?.items || [];
+            const list = document.getElementById('port-search-results');
+            list.innerHTML = '';
+            if (!data || data.length === 0) {
+                list.innerHTML = liveMode
+                    ? '<div class="list-group-item list-group-item-warning">Живой поиск тоже не нашёл совпадений.</div>'
+                    : '<div class="list-group-item list-group-item-warning">В локальном кэше ничего не найдено. Нажмите кнопку API.</div>';
+                return;
+            }
+            data.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'list-group-item list-group-item-action';
+                btn.innerHTML = `<strong>${item.ticker}</strong> - ${item.name}`;
+                btn.onclick = () => {
+                    addPortfolioItem(item);
+                    list.innerHTML = '';
+                    document.getElementById('port-search-input').value = '';
+                };
+                list.appendChild(btn);
+            });
+        };
+
+        const runPortfolioSearch = async (liveMode = false) => {
             const query = document.getElementById('port-search-input').value;
             if(!query) return;
             showLoading();
             try {
                 clearInlineFeedback('portfolio-feedback');
-                const data = await apiRequest(`/api/search?query=${encodeURIComponent(query)}`, {}, 'Не удалось найти инструмент.');
-                const list = document.getElementById('port-search-results');
-                list.innerHTML = '';
-                if (!data || data.length === 0) {
-                    list.innerHTML = '<div class="list-group-item list-group-item-warning">Ничего не найдено.</div>';
-                    return;
+                const url = liveMode ? `/api/search_live?query=${encodeURIComponent(query)}` : `/api/search?query=${encodeURIComponent(query)}`;
+                const payload = await apiRequest(url, {}, liveMode ? 'Не удалось выполнить живой поиск.' : 'Не удалось найти инструмент.');
+                renderPortfolioSearchResults(payload, liveMode);
+                const cache = payload?.cache;
+                if (cache?.updated_at && liveMode) {
+                    setInlineFeedback('portfolio-feedback', `Живой поиск выполнен. Кэш обновлён: ${cache.updated_at}.`, 'success', 'Результаты из API');
                 }
-                data.forEach(item => {
-                    const btn = document.createElement('button');
-                    btn.className = 'list-group-item list-group-item-action';
-                    btn.innerHTML = `<strong>${item.ticker}</strong> - ${item.name}`;
-                    btn.onclick = () => {
-                        addPortfolioItem(item);
-                        list.innerHTML = '';
-                        document.getElementById('port-search-input').value = '';
-                    };
-                    list.appendChild(btn);
-                });
             } catch (e) {
-                setInlineFeedback('portfolio-feedback', e.message, 'danger', 'Не удалось выполнить поиск');
+                setInlineFeedback('portfolio-feedback', e.message, 'danger', liveMode ? 'Не удалось выполнить живой поиск' : 'Не удалось выполнить поиск');
             } finally { hideLoading(); }
-        });
+        };
+
+        document.getElementById('port-search-btn').addEventListener('click', async () => runPortfolioSearch(false));
+        document.getElementById('port-search-live-btn').addEventListener('click', async () => runPortfolioSearch(true));
 
         function addPortfolioItem(item) {
             if (portfolioItems.find(i => i.figi === item.figi)) return;
