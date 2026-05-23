@@ -305,6 +305,101 @@
             font-size: 0.96rem;
             font-weight: 700;
         }
+        .workspace-section-switch {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            background: #ffffff;
+            border: 1px solid #edf2f9;
+            border-radius: 0.75rem;
+            padding: 0.35rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+            margin-bottom: 1rem;
+        }
+        .workspace-section-switch .btn {
+            border-radius: 0.55rem;
+            border: none;
+            color: #34495e;
+            font-weight: 600;
+            padding: 0.55rem 0.9rem;
+        }
+        .workspace-section-switch .btn.active {
+            background: #34495e;
+            color: #ffffff;
+        }
+        .methodology-view {
+            margin-bottom: 2rem;
+        }
+        .methodology-hero {
+            background: #ffffff;
+            border: 1px solid #edf2f9;
+            border-radius: 0.75rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+            padding: 1.35rem 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .methodology-hero .lead {
+            color: #495057;
+            font-size: 1rem;
+            max-width: 980px;
+        }
+        .methodology-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .method-card {
+            background: #ffffff;
+            border: 1px solid #edf2f9;
+            border-radius: 0.75rem;
+            padding: 1rem 1.1rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.04);
+        }
+        .method-card h3 {
+            color: #1f3a52;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .method-card p {
+            color: #495057;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            margin-bottom: 0.55rem;
+        }
+        .method-card .method-meta {
+            border-top: 1px solid #edf2f9;
+            color: #6c757d;
+            font-size: 0.84rem;
+            line-height: 1.4;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+        }
+        .formula-pill {
+            display: inline-flex;
+            align-items: center;
+            background: #eef5fb;
+            border: 1px solid #d9e6f2;
+            border-radius: 999px;
+            color: #1f3a52;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.8rem;
+            padding: 0.25rem 0.65rem;
+            margin-bottom: 0.45rem;
+        }
+        .methodology-map {
+            background: #f8fafc;
+            border: 1px solid #edf2f9;
+            border-radius: 0.75rem;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+        }
+        .methodology-map strong {
+            color: #1f3a52;
+        }
+        .methodology-map ul {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body>
@@ -333,6 +428,12 @@
             </div>
         </div>
 
+        <div class="workspace-section-switch" role="group" aria-label="Workspace section">
+            <button type="button" class="btn active" id="workspaceViewBtn">Рабочее пространство</button>
+            <button type="button" class="btn" id="methodologyViewBtn">Методология расчётов</button>
+        </div>
+
+        <div id="workspace-view">
         <!-- Main Navigation -->
         <ul class="nav nav-pills mb-4 bg-white p-3 rounded shadow-sm" id="mainTabs" role="tablist">
             <li class="nav-item me-2" role="presentation">
@@ -1560,6 +1661,116 @@ GAZP,40</pre>
             </div>
 
         </div>
+        </div>
+
+        <section id="methodology-view" class="methodology-view d-none">
+            <div class="methodology-hero">
+                <div class="simple-badge mb-3">Методологическая база проекта</div>
+                <h2 class="h4 mb-2">Как интерпретировать риск-метрики</h2>
+                <p class="lead mb-0">
+                    Эта страница кратко объясняет модели, которые используются в калькуляторе:
+                    от VaR и Expected Shortfall до портфельной ковариации, Monte Carlo для опционов,
+                    stress testing и проверки качества модели.
+                </p>
+            </div>
+
+            <div class="methodology-map">
+                <strong>Логика работы системы:</strong>
+                <ul class="helper-list mt-2">
+                    <li>Сначала данные превращаются в ряд доходностей или P&amp;L.</li>
+                    <li>Затем рассчитываются базовые риск-метрики: VaR, ES и LVaR.</li>
+                    <li>Для портфеля учитываются веса, ковариации и эффект диверсификации.</li>
+                    <li>Для опционов добавляются Greeks, Monte Carlo и полная переоценка.</li>
+                    <li>Stress testing и backtesting помогают проверить устойчивость результата.</li>
+                </ul>
+            </div>
+
+            <div class="methodology-grid">
+                <article class="method-card">
+                    <h3>Value at Risk (VaR)</h3>
+                    <div class="formula-pill">VaR = loss quantile</div>
+                    <p>VaR показывает максимальный ожидаемый убыток за выбранный горизонт при заданном уровне доверия. Например, VaR 95% означает, что в нормальных условиях убыток не должен превышать это значение примерно в 95% наблюдений.</p>
+                    <div class="method-meta">Где используется: один актив, портфель, linear risk, option Monte Carlo.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Historical VaR</h3>
+                    <div class="formula-pill">PnL history -> quantile</div>
+                    <p>Исторический VaR строится по фактическим изменениям цен. Метод не требует предположения о нормальном распределении, поэтому хорошо показывает риск на реальных рыночных данных.</p>
+                    <div class="method-meta">Как читать: чем глубже плохие исторические дни, тем выше исторический VaR.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Parametric VaR</h3>
+                    <div class="formula-pill">VaR = z * sigma - mu</div>
+                    <p>Параметрический VaR использует среднее, волатильность и z-score выбранного confidence level. Это быстрый и прозрачный метод, но он чувствителен к предположению о форме распределения.</p>
+                    <div class="method-meta">Где используется: карточки риска по одному активу и линейным инструментам.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Expected Shortfall (ES)</h3>
+                    <div class="formula-pill">ES = average tail loss</div>
+                    <p>ES показывает средний убыток в тех сценариях, где VaR уже пробит. Эта метрика полезна, потому что отвечает не только на вопрос "где граница", но и "насколько плохо за границей".</p>
+                    <div class="method-meta">Как читать: ES показывает тяжесть хвоста распределения и дополняет VaR.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Liquidity-adjusted VaR (LVaR)</h3>
+                    <div class="formula-pill">LVaR = VaR + liquidity cost</div>
+                    <p>LVaR добавляет к рыночному риску стоимость выхода из позиции: bid-ask spread, стресс спреда и период ликвидации. Это делает оценку ближе к реальной продаже позиции.</p>
+                    <div class="method-meta">Где используется: один актив, блок ликвидности и интерпретация риска.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Portfolio VaR</h3>
+                    <div class="formula-pill">sigma_p = sqrt(w'Covw)</div>
+                    <p>Портфельный VaR учитывает веса активов и ковариационную матрицу доходностей. Поэтому риск портфеля зависит не только от отдельных активов, но и от того, насколько они движутся вместе.</p>
+                    <div class="method-meta">Где используется: вкладка "Портфель", correlation matrix и efficient frontier.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Options and Greeks</h3>
+                    <div class="formula-pill">Delta, Gamma, Vega, Theta</div>
+                    <p>Для опционов цена и риск зависят не только от цены базового актива. Greeks показывают чувствительность к движению рынка, кривизне payoff, волатильности и времени.</p>
+                    <div class="method-meta">Где используется: Options, Option Risk, Stress-сценарии.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Monte Carlo and Full Revaluation</h3>
+                    <div class="formula-pill">scenarios -> simulated PnL</div>
+                    <p>Monte Carlo моделирует множество возможных рыночных сценариев. Full Revaluation переоценивает опцион в каждом сценарии, поэтому лучше отражает нелинейность, чем одна формульная аппроксимация.</p>
+                    <div class="method-meta">Где используется: Option Risk и распределение PnL по сценариям.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Stress Testing</h3>
+                    <div class="formula-pill">market shock -> portfolio loss</div>
+                    <p>Stress testing проверяет, что произойдет при заранее заданных неблагоприятных сценариях: падение рынка, рост волатильности или изменение ставок. Это не прогноз, а проверка устойчивости.</p>
+                    <div class="method-meta">Где используется: Stress-сценарии и сценарная переоценка опционов.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Backtesting</h3>
+                    <div class="formula-pill">VaR breaches vs expected breaches</div>
+                    <p>Backtesting сравнивает прогнозируемые риск-границы с фактическим P&amp;L. Если пробоев VaR слишком много или они идут сериями, модель может занижать риск.</p>
+                    <div class="method-meta">Где используется: Model Check, Kupiec/coverage logic и ES diagnostics.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Bond and Swap Logic</h3>
+                    <div class="formula-pill">cashflows -> present value</div>
+                    <p>Облигационный блок строит денежные потоки выпуска, дисконтирует их по кривой ставок и сравнивает варианты swap-hedge. Это помогает оценить процентный риск и возможную конструкцию хеджа.</p>
+                    <div class="method-meta">Где используется: Bond &amp; Swap, cashflow table и сценарии 1Y-rate.</div>
+                </article>
+
+                <article class="method-card">
+                    <h3>Risk Interpretation Workflow</h3>
+                    <div class="formula-pill">metric -> interpretation -> action</div>
+                    <p>Практический вывод строится в три шага: какая метрика получилась, что она означает для позиции и какое действие может снизить риск. Поэтому в интерфейсе есть copilot-блоки, hedge ideas и PDF-отчеты.</p>
+                    <div class="method-meta">Где используется: интерпретации, hedge ideas и PDF-отчеты после расчета.</div>
+                </article>
+            </div>
+        </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -1637,6 +1848,7 @@ GAZP,40</pre>
             'risk-attribution',
             'bond-swap',
         ];
+        let currentWorkspaceSection = localStorage.getItem('risk-workspace-section') || 'workspace';
         const STRESS_UNDERLYING_OPTIONS = ['U1', 'U2', 'U3', 'U4'];
         const FIELD_HELP = {
             instrumentName: 'Введите тикер или часть названия бумаги. Поиск нужен, чтобы подтянуть историю цены из Tinkoff.',
@@ -2442,6 +2654,17 @@ GAZP,40</pre>
         const getPortfolioConfidence = () => {
             const presetKey = document.getElementById('portfolio-risk-preset').value;
             return (RISK_PRESETS[presetKey] || RISK_PRESETS.base).confidence;
+        };
+
+        const applyWorkspaceSection = (section) => {
+            currentWorkspaceSection = section === 'methodology' ? 'methodology' : 'workspace';
+            localStorage.setItem('risk-workspace-section', currentWorkspaceSection);
+
+            const isMethodology = currentWorkspaceSection === 'methodology';
+            document.getElementById('workspace-view').classList.toggle('d-none', isMethodology);
+            document.getElementById('methodology-view').classList.toggle('d-none', !isMethodology);
+            document.getElementById('workspaceViewBtn').classList.toggle('active', !isMethodology);
+            document.getElementById('methodologyViewBtn').classList.toggle('active', isMethodology);
         };
 
         const applyExperienceMode = (mode) => {
@@ -4071,6 +4294,8 @@ GAZP,40</pre>
             document.getElementById('moex-start-date').value = startDate;
             document.getElementById('moex-end-date').value = endDate;
             document.getElementById('single-risk-preset').addEventListener('change', applySingleRiskPreset);
+            document.getElementById('workspaceViewBtn').addEventListener('click', () => applyWorkspaceSection('workspace'));
+            document.getElementById('methodologyViewBtn').addEventListener('click', () => applyWorkspaceSection('methodology'));
             document.getElementById('noviceModeBtn').addEventListener('click', () => applyExperienceMode('novice'));
             document.getElementById('proModeBtn').addEventListener('click', () => applyExperienceMode('pro'));
             document.getElementById('ovar-use-fixed-seed').addEventListener('change', toggleOptionSeedInput);
@@ -4081,6 +4306,7 @@ GAZP,40</pre>
             renderBondCurveRows(defaultBondCurveRows());
             renderBondScenarioRows(defaultBondScenarioRows());
             applyExperienceMode(currentExperienceMode);
+            applyWorkspaceSection(currentWorkspaceSection);
         };
     </script>
 </body>
