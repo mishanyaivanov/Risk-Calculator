@@ -29,59 +29,59 @@ def build_single_asset_copilot(
     tail_ratio = (es_loss / var_loss) if var_loss > 1e-12 else 1.0
 
     if severity == "green":
-        one_liner = "По текущей дневной настройке риска позиция выглядит управляемой."
+        one_liner = "At the current daily settings, the position looks manageable."
     elif severity == "yellow":
-        one_liner = "Позиция ещё выглядит рабочей, но плохой день уже может быть заметным."
+        one_liner = "The position still looks workable, but a bad day could already be noticeable."
     else:
-        one_liner = "В один плохой день позиция может дать заметный убыток, поэтому ей нужно уделить внимание."
+        one_liner = "One bad day could create a meaningful loss, so this position needs attention."
 
     if tail_ratio >= 1.35:
-        main_message = "Очень плохие дни выглядят заметно хуже базовой оценки VaR, поэтому хвостовой риск здесь важен."
+        main_message = "Very bad days look materially worse than the base VaR estimate, so tail risk matters here."
     elif liquidity_addon > 0.1 * max(var_loss, 1.0):
-        main_message = "Проблема не только в рыночном риске: принудительный выход из позиции может заметно ухудшить результат."
+        main_message = "The issue is not only market risk: forced liquidation could materially worsen the outcome."
     else:
-        main_message = "Базовая оценка рыночного риска и более консервативные проверки в целом согласуются друг с другом."
+        main_message = "The base market-risk estimate and the more conservative checks are broadly consistent with each other."
 
     signals = [
         {
-            "label": "Дневной риск",
+            "label": "Daily risk",
             "severity": severity,
-            "value": f"{loss_share_pct:.2f}% от размера позиции",
-            "explanation": "Показывает, насколько велика модельная однодневная потеря относительно размера позиции.",
+            "value": f"{loss_share_pct:.2f}% of position size",
+            "explanation": "This shows the modeled one-day loss relative to the size of the position.",
         },
         {
-            "label": "Тяжесть хвоста",
+            "label": "Tail severity",
             "severity": "red" if tail_ratio >= 1.35 else ("yellow" if tail_ratio >= 1.15 else "green"),
             "value": f"ES / VaR = {tail_ratio:.2f}",
-            "explanation": "Expected Shortfall сравнивает средний убыток в очень плохие дни с обычным порогом VaR.",
+            "explanation": "Expected Shortfall compares the average loss in very bad days with the usual VaR threshold.",
         },
         {
-            "label": "Давление ликвидности",
+            "label": "Liquidity pressure",
             "severity": "red" if liquidity_addon > 0.2 * max(var_loss, 1.0) else ("yellow" if liquidity_addon > 0 else "green"),
             "value": _fmt_money(liquidity_addon),
-            "explanation": "Это дополнительный убыток, который появляется из-за стрессовой ликвидации по сравнению с базовым VaR.",
+            "explanation": "This is the extra loss introduced by stressed liquidation compared with base VaR.",
         },
         {
-            "label": "Сверка моделей",
+            "label": "Model cross-check",
             "severity": "yellow" if abs(var_loss - hvar_loss) > 0.2 * max(var_loss, 1.0) else "green",
             "value": f"Hist VaR {_fmt_money(hvar_loss)} vs Param VaR {_fmt_money(var_loss)}",
-            "explanation": "Большой разрыв между историческим и параметрическим VaR означает, что итог чувствителен к выбранной модели.",
+            "explanation": "A large gap between historical and parametric VaR means the result depends strongly on model choice.",
         },
     ]
 
-    actions = []
+    actions: list[str] = []
     if severity == "red":
-        actions.append("Уменьшите размер позиции или разбейте сделку, если такой объём риска не был вашей целью.")
-        actions.append("Перед тем как считать риск приемлемым, обязательно прогоните стресс-сценарий.")
+        actions.append("Reduce the position size or split execution if this amount of risk was not intentional.")
+        actions.append("Run a stress scenario before treating this position as acceptable.")
     elif severity == "yellow":
-        actions.append("Держите позицию под контролем и сравните её со стресс-сценариями.")
+        actions.append("Keep the position under review and compare it with stress scenarios.")
     else:
-        actions.append("Для выбранного горизонта и confidence level это выглядит как разумный базовый уровень риска.")
+        actions.append(f"For the selected horizon and {confidence:.1%} confidence level, this looks like a reasonable baseline risk level.")
 
     if liquidity_addon > 0.0:
-        actions.append("Следите за bid-ask spread и предпосылками ликвидации: стоимость выхода здесь тоже важна.")
+        actions.append("Monitor bid-ask spread and liquidation assumptions, because exit cost matters here as well.")
     if tail_ratio >= 1.25:
-        actions.append("Не полагайтесь только на VaR: хвост распределения потерь здесь тяжелее, чем видно из одного порога.")
+        actions.append("Do not rely on VaR alone: the loss tail is heavier than a single threshold may suggest.")
 
     return {
         "title": "Risk Copilot",
@@ -107,11 +107,7 @@ def build_portfolio_copilot(
 
     max_weight = max(weights) if weights else 0.0
     max_idx = weights.index(max_weight) if weights else -1
-    concentration_asset = (
-        asset_names[max_idx]
-        if 0 <= max_idx < len(asset_names)
-        else "largest asset"
-    )
+    concentration_asset = asset_names[max_idx] if 0 <= max_idx < len(asset_names) else "largest asset"
 
     avg_abs_corr = 0.0
     pair_count = 0
@@ -127,61 +123,61 @@ def build_portfolio_copilot(
 
     if var_share_pct < 3.0 and max_weight < 0.4 and avg_abs_corr < 0.45:
         severity = "green"
-        one_liner = "Для текущих входных данных портфель выглядит достаточно сбалансированным."
+        one_liner = "For the current inputs, the portfolio looks reasonably balanced."
     elif var_share_pct < 6.0 and max_weight < 0.6:
         severity = "yellow"
-        one_liner = "Портфель выглядит рабочим, но концентрация или корреляция уже начинают играть заметную роль."
+        one_liner = "The portfolio looks workable, but concentration or correlation is already becoming visible."
     else:
         severity = "red"
-        one_liner = "Риск портфеля слишком сконцентрирован, чтобы считать его комфортно диверсифицированным."
+        one_liner = "Portfolio risk is too concentrated to be treated as comfortably diversified."
 
     if max_weight >= 0.5:
-        main_message = f"Главная проблема риска здесь — концентрация в {concentration_asset}."
+        main_message = f"The main problem here is concentration in {concentration_asset}."
     elif avg_abs_corr >= 0.65:
-        main_message = "Активы двигаются слишком похоже, поэтому диверсификация слабее, чем может казаться по весам."
+        main_message = "Assets move too similarly, so diversification is weaker than the weights may suggest."
     elif annual_return < 0 and annual_vol > 0.18:
-        main_message = "Портфель берёт на себя заметный риск, но недавняя история не даёт комфортной оценки доходности."
+        main_message = "The portfolio is taking noticeable risk, but recent history does not support a comfortable return outlook."
     else:
-        main_message = "Структура портфеля выглядит внутренне согласованной: нет одной явной проблемы, которая доминирует над всеми остальными."
+        main_message = "The portfolio structure looks internally consistent, with no single issue dominating all the others."
 
     signals = [
         {
             "label": "Portfolio VaR",
             "severity": severity,
-            "value": f"{var_share_pct:.2f}% от стоимости портфеля",
-            "explanation": "Это модельная однодневная потеря в плохом сценарии относительно полного размера портфеля.",
+            "value": f"{var_share_pct:.2f}% of portfolio value",
+            "explanation": "This is the modeled one-day loss in a bad scenario relative to total portfolio size.",
         },
         {
-            "label": "Самый большой вес",
+            "label": "Largest weight",
             "severity": "red" if max_weight >= 0.5 else ("yellow" if max_weight >= 0.35 else "green"),
             "value": f"{concentration_asset}: {max_weight * 100:.1f}%",
-            "explanation": "Один слишком большой вес может фактически доминировать в портфеле и делать диверсификацию обманчиво красивой.",
+            "explanation": "One oversized position can dominate the portfolio and make diversification look better than it really is.",
         },
         {
-            "label": "Качество диверсификации",
+            "label": "Diversification quality",
             "severity": "red" if avg_abs_corr >= 0.65 else ("yellow" if avg_abs_corr >= 0.45 else "green"),
             "value": f"Avg |corr| = {avg_abs_corr:.2f}",
-            "explanation": "Чем выше средняя абсолютная корреляция, тем чаще активы движутся вместе и тем слабее эффект диверсификации.",
+            "explanation": "The higher the average absolute correlation, the more often assets move together and the weaker diversification becomes.",
         },
         {
-            "label": "Баланс риск / доходность",
+            "label": "Risk / return balance",
             "severity": "yellow" if annual_return < 0 else "green",
-            "value": f"Доходность {_fmt_pct(annual_return)} vs волатильность {_fmt_pct(annual_vol)}",
-            "explanation": "Здесь сравнивается недавняя годовая оценка доходности с годовой волатильностью портфеля.",
+            "value": f"Return {_fmt_pct(annual_return)} vs volatility {_fmt_pct(annual_vol)}",
+            "explanation": "This compares the recent annualized return estimate with annualized portfolio volatility.",
         },
     ]
 
-    actions = []
+    actions: list[str] = []
     if max_weight >= 0.5:
-        actions.append(f"Снизьте роль {concentration_asset} в портфеле или компенсируйте её другой экспозицией.")
+        actions.append(f"Reduce the role of {concentration_asset} in the portfolio or offset it with another exposure.")
     if avg_abs_corr >= 0.65:
-        actions.append("Добавьте активы или хеджи, которые ведут себя по-другому, иначе диверсификация остаётся в основном косметической.")
+        actions.append("Add assets or hedges that behave differently, otherwise diversification remains mostly cosmetic.")
     if severity == "green":
-        actions.append("Используйте этот портфель как хороший базовый сценарий и сравните его со стрессом или хеджем.")
+        actions.append("Use this portfolio as a good baseline case when comparing stress or hedge scenarios.")
     elif severity == "yellow":
-        actions.append("Прогоните стресс-сценарии, чтобы понять, становятся ли слабые места заметно хуже вне нормальных условий.")
+        actions.append("Run stress scenarios to see whether the weak spot becomes materially worse outside normal conditions.")
     else:
-        actions.append("Не останавливайтесь на summary-карточке: текущую структуру стоит ребалансировать или хеджировать до её масштабирования.")
+        actions.append("Do not stop at the summary card: the current structure should be rebalanced or hedged before scaling it further.")
 
     return {
         "title": "Risk Copilot",

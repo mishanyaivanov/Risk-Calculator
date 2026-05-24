@@ -19,6 +19,7 @@ from services.tinkoff_service import (
     get_candles,
     merge_cached_instruments,
     rebuild_instrument_cache,
+    schedule_cache_refresh_if_needed,
 )
 from services.risk_calculator import (
     pnl_from_prices, 
@@ -67,22 +68,29 @@ def has_real_tinkoff_token(token: Optional[str]) -> bool:
     return bool(token and token.strip() and token.strip() != "Token")
 
 
+def trigger_tinkoff_cache_refresh_if_needed() -> bool:
+    token = os.getenv("TINKOFF_TOKEN")
+    if not has_real_tinkoff_token(token):
+        return False
+    return schedule_cache_refresh_if_needed(token)
+
+
 def build_risk_status(var_loss: float, position_value: float) -> Dict[str, float | str]:
     base_value = abs(position_value)
     share_pct = (var_loss / base_value * 100.0) if base_value > 1e-12 else 0.0
 
     if share_pct < 2.0:
         severity = "green"
-        label = "Низкий риск"
-        guidance = "Потеря в плохой день невелика относительно размера позиции."
+        label = "Low risk"
+        guidance = "The modeled loss in a bad day is small relative to the position size."
     elif share_pct < 5.0:
         severity = "yellow"
-        label = "Средний риск"
-        guidance = "Позиция чувствительна к плохому дню. Стоит следить за размером позиции и ликвидностью."
+        label = "Moderate risk"
+        guidance = "The position is sensitive to a bad day. Keep an eye on size and liquidity."
     else:
         severity = "red"
-        label = "Высокий риск"
-        guidance = "Потенциальная потеря заметна относительно размера позиции. Проверьте размер сделки и стресс-сценарии."
+        label = "High risk"
+        guidance = "The potential loss is meaningful relative to the position size. Review trade size and stress scenarios."
 
     return {
         "severity": severity,
@@ -291,8 +299,14 @@ class BondSwapRequest(BaseModel):
 async def read_root(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
+
+@app.on_event("startup")
+async def startup_refresh_tinkoff_cache_if_needed():
+    trigger_tinkoff_cache_refresh_if_needed()
+
 @app.get("/api/search")
 async def search_instrument(query: str):
+    trigger_tinkoff_cache_refresh_if_needed()
     results = find_instruments(query)
     return {
         "items": results,
@@ -651,7 +665,7 @@ async def create_single_report(request: ReportRequest):
             "report_id": report_id,
             "filename": "single-asset-risk-report.pdf",
             "download_url": f"/api/report/download/{report_id}",
-            "message": "Отчёт сформирован и готов к скачиванию.",
+            "message": "The report has been created and is ready to download.",
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -670,7 +684,7 @@ async def create_portfolio_report(request: ReportRequest):
             "report_id": report_id,
             "filename": "portfolio-risk-report.pdf",
             "download_url": f"/api/report/download/{report_id}",
-            "message": "Отчёт сформирован и готов к скачиванию.",
+            "message": "The report has been created and is ready to download.",
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

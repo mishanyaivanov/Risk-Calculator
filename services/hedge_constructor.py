@@ -35,35 +35,35 @@ def build_single_asset_hedge_constructor(
     scenario_defs = [
         {
             "id": "trim_25",
-            "title": "Сократить позицию на 25%",
+            "title": "Trim the position by 25%",
             "type": "size_reduction",
             "factor": 0.75,
-            "description": "Меньшая позиция почти линейно снижает рыночный риск и остаётся самым простым способом быстро уменьшить нагрузку.",
-            "action": "Сократите примерно четверть текущей позиции.",
+            "description": "A smaller position reduces market risk almost linearly and remains the simplest way to bring exposure down quickly.",
+            "action": "Reduce roughly one quarter of the current position.",
         },
         {
             "id": "trim_50",
-            "title": "Сократить позицию на 50%",
+            "title": "Trim the position by 50%",
             "type": "size_reduction",
             "factor": 0.50,
-            "description": "Более глубокое сокращение даёт сильный эффект по риску без добавления нового инструмента.",
-            "action": "Сократите текущую экспозицию вдвое.",
+            "description": "A deeper reduction gives a stronger risk effect without adding a new instrument.",
+            "action": "Cut the current exposure in half.",
         },
         {
             "id": "futures_50",
-            "title": "Добавить линейный хедж на 50%",
+            "title": "Add a 50% linear hedge",
             "type": "linear_hedge",
             "factor": 0.50,
-            "description": "Это приближённо моделирует короткий фьючерсный или SPFI-хедж на половину экспозиции.",
-            "action": "Откройте короткий хедж с номиналом около 50% от спотовой позиции.",
+            "description": "This approximates a short futures or SPFI hedge covering half of the spot exposure.",
+            "action": "Open a short hedge with notional close to 50% of the spot position.",
         },
         {
             "id": "futures_75",
-            "title": "Добавить линейный хедж на 75%",
+            "title": "Add a 75% linear hedge",
             "type": "linear_hedge",
             "factor": 0.25,
-            "description": "Более сильный хедж заметно снижает дневной VaR, но при этом оставляет меньше upside и всё ещё не убирает basis risk полностью.",
-            "action": "Откройте короткий хедж с номиналом около 75% от спотовой позиции.",
+            "description": "A stronger hedge cuts daily VaR more aggressively, but leaves less upside and still does not remove basis risk completely.",
+            "action": "Open a short hedge with notional close to 75% of the spot position.",
         },
     ]
 
@@ -103,13 +103,13 @@ def build_single_asset_hedge_constructor(
                     "improvement_pct": improvement_pct,
                 },
                 "notes": [
-                    "Это оценка первого порядка: рыночный риск масштабируется вместе с оставшейся незахеджированной экспозицией.",
-                    "Реальный фьючерсный или SPFI-хедж всё равно может оставлять basis risk, требования по марже и издержки исполнения за пределами этой быстрой оценки.",
+                    "This is a first-order estimate: market risk scales with the remaining unhedged exposure.",
+                    "A real futures or SPFI hedge can still leave basis risk, margin requirements, and execution costs outside this quick estimate.",
                 ],
                 "quick_action": (
                     {
                         "kind": "apply_forward_hedge",
-                        "label": "Открыть в Futures & SPFI",
+                        "label": "Open in Futures & SPFI",
                         "payload": {
                             "instrument_type": "futures",
                             "spot": last_price,
@@ -131,13 +131,13 @@ def build_single_asset_hedge_constructor(
 
     return {
         "title": "Hedge Constructor",
-        "summary": "Попробуйте несколько простых hedge-сценариев и сразу посмотрите, насколько они уменьшают однодневный downside до перехода к более сложной конструкции.",
+        "summary": "Try a few simple hedge scenarios and immediately compare how much they reduce one-day downside before moving to a more complex structure.",
         "spot_price": last_price,
         "position_size": position_size,
         "position_value": position_value,
         "option_bridge": {
             "kind": "apply_option_hedge",
-            "label": "Изучить protective put",
+            "label": "Explore a protective put",
             "payload": {
                 "option_type": "put",
                 "spot": last_price,
@@ -152,35 +152,6 @@ def build_single_asset_hedge_constructor(
         },
         "scenarios": scenarios,
     }
-
-
-def _rebalance_with_cap(weights: np.ndarray, max_weight: float) -> np.ndarray:
-    adjusted = weights.astype(float).copy()
-    if adjusted.size == 0:
-        return adjusted
-
-    while True:
-        above = adjusted > max_weight
-        if not np.any(above):
-            break
-
-        excess = float(np.sum(adjusted[above] - max_weight))
-        adjusted[above] = max_weight
-        recipients = ~above
-        if not np.any(recipients):
-            break
-
-        recipient_sum = float(np.sum(adjusted[recipients]))
-        if recipient_sum <= 1e-12:
-            adjusted[recipients] += excess / np.sum(recipients)
-        else:
-            adjusted[recipients] += adjusted[recipients] / recipient_sum * excess
-
-    adjusted = np.clip(adjusted, 0.0, None)
-    total = float(np.sum(adjusted))
-    if total > 1e-12:
-        adjusted /= total
-    return adjusted
 
 
 def _redistribute_trim(weights: np.ndarray, largest_index: int, trim_amount: float) -> np.ndarray:
@@ -221,7 +192,7 @@ def build_portfolio_hedge_constructor(
     if weights_array.size == 0:
         return {
             "title": "Hedge Constructor",
-            "summary": "Для этого портфеля пока нет готовых hedge-идей.",
+            "summary": "No ready-made hedge ideas are available for this portfolio yet.",
             "scenarios": [],
         }
 
@@ -238,23 +209,23 @@ def build_portfolio_hedge_constructor(
     scenario_defs = [
         {
             "id": "equal_weight",
-            "title": "Перейти ближе к равным весам",
-            "description": "Этот сценарий показывает более чистую базу диверсификации, где каждый актив несёт одинаковую долю портфеля.",
-            "action": "Ребалансируйте портфель в сторону равных весов.",
+            "title": "Move closer to equal weights",
+            "description": "This scenario shows a cleaner diversification baseline in which each asset carries an equal share of the portfolio.",
+            "action": "Rebalance the portfolio toward equal weights.",
             "weights": _equal_weight_portfolio(len(weights_array)),
         },
         {
             "id": "trim_largest_15pp",
-            "title": "Снизить крупнейшую позицию на 15 п.п.",
-            "description": "Частичный ребаланс обычно легче исполнить, чем полностью переделывать портфель.",
-            "action": f"Снизьте {largest_name} на 15 процентных пунктов и перераспределите вес по остальным активам.",
+            "title": "Cut the largest position by 15 pp",
+            "description": "A partial rebalance is often easier to execute than redesigning the whole portfolio.",
+            "action": f"Reduce {largest_name} by 15 percentage points and redistribute the weight across the remaining assets.",
             "weights": _redistribute_trim(weights_array, largest_index, 0.15),
         },
         {
             "id": "market_overlay_20",
-            "title": "Добавить защитный overlay на 20%",
-            "description": "Это приближённо моделирует частичный индексный или фьючерсный overlay, который снижает суммарную рискованную экспозицию портфеля.",
-            "action": "Добавьте короткий overlay примерно на 20% от общего номинала портфеля.",
+            "title": "Add a 20% protective overlay",
+            "description": "This approximates a partial index or futures overlay that lowers the aggregate risky exposure of the portfolio.",
+            "action": "Add a short overlay equal to roughly 20% of total portfolio notional.",
             "scale_factor": 0.80,
         },
     ]
@@ -311,13 +282,13 @@ def build_portfolio_hedge_constructor(
                     "weights_preview": weights_preview,
                 },
                 "notes": [
-                    "Это быстрый сценарий поддержки решения, а не оптимизатор с учётом всех транзакционных издержек.",
-                    "Цель — показать направление изменения риска после ребалансировки или хеджа до более глубокого анализа.",
+                    "This is a quick decision-support scenario, not an optimizer that accounts for all transaction costs.",
+                    "The goal is to show the direction of risk change after rebalancing or hedging before deeper analysis.",
                 ],
                 "quick_action": (
                     {
                         "kind": "apply_portfolio_weights",
-                        "label": "Применить эти веса",
+                        "label": "Apply these weights",
                         "payload": {
                             "weights": candidate_weights.tolist(),
                         },
@@ -330,7 +301,7 @@ def build_portfolio_hedge_constructor(
 
     return {
         "title": "Hedge Constructor",
-        "summary": "Эти сценарии показывают простые способы снизить концентрацию или суммарную рыночную экспозицию без полной перестройки workflow.",
+        "summary": "These scenarios show simple ways to reduce concentration or total market exposure without rebuilding the full workflow.",
         "largest_asset": largest_name,
         "scenarios": scenarios,
     }

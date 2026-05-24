@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 import json
 import os
+import threading
 
 try:
     from t_tech.invest import Client, CandleInterval
@@ -25,6 +26,13 @@ except ImportError:
 TOKEN = os.getenv("TINKOFF_TOKEN", "Token")
 CACHE_PATH = Path(__file__).resolve().parent.parent / "cache" / "tinkoff_instruments_cache.json"
 INSTRUMENT_METHODS = ("shares", "bonds", "etfs", "currencies")
+AUTO_REFRESH_HOUR_UTC = int(os.getenv("TINKOFF_CACHE_REFRESH_HOUR_UTC", "3"))
+AUTO_REFRESH_MAX_AGE_HOURS = int(os.getenv("TINKOFF_CACHE_MAX_AGE_HOURS", "24"))
+
+_CACHE_REFRESH_LOCK = threading.Lock()
+_CACHE_REFRESH_IN_PROGRESS = False
+_MEMORY_CACHE_LOCK = threading.Lock()
+_MEMORY_CACHE_PAYLOAD: Optional[Dict[str, Any]] = None
 
 
 def search_rank(query: str, ticker: str, name: str, instrument_type: str) -> tuple:
@@ -91,6 +99,16 @@ def _safe_token(token: Optional[str]) -> str:
     return token or TOKEN
 
 
+def _parse_cache_timestamp(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
 def _cache_shell(items: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     return {
         "updated_at": None,
@@ -100,6 +118,15 @@ def _cache_shell(items: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]
 
 
 def load_instrument_cache(cache_path: Path = CACHE_PATH) -> Dict[str, Any]:
+    global _MEMORY_CACHE_PAYLOAD
+    if cache_path == CACHE_PATH:
+        with _MEMORY_CACHE_LOCK:
+            if _MEMORY_CACHE_PAYLOAD is not None:
+                return {
+                    "updated_at": _MEMORY_CACHE_PAYLOAD.get("updated_at"),
+                    "item_count": _MEMORY_CACHE_PAYLOAD.get("item_count", 0),
+                    "items": list(_MEMORY_CACHE_PAYLOAD.get("items", [])),
+                }
     if not cache_path.exists():
         return _cache_shell()
     try:
@@ -108,16 +135,21 @@ def load_instrument_cache(cache_path: Path = CACHE_PATH) -> Dict[str, Any]:
         items = payload.get("items", [])
         if not isinstance(items, list):
             return _cache_shell()
-        return {
+        normalized = {
             "updated_at": payload.get("updated_at"),
             "item_count": int(payload.get("item_count", len(items))),
             "items": items,
         }
+        if cache_path == CACHE_PATH:
+            with _MEMORY_CACHE_LOCK:
+                _MEMORY_CACHE_PAYLOAD = normalized
+        return normalized
     except Exception:
         return _cache_shell()
 
 
 def _write_instrument_cache(items: List[Dict[str, Any]], cache_path: Path = CACHE_PATH) -> Dict[str, Any]:
+    global _MEMORY_CACHE_PAYLOAD
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "updated_at": _now_iso(),
@@ -126,7 +158,34 @@ def _write_instrument_cache(items: List[Dict[str, Any]], cache_path: Path = CACH
     }
     with cache_path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, ensure_ascii=False, indent=2)
+    if cache_path == CACHE_PATH:
+        with _MEMORY_CACHE_LOCK:
+            _MEMORY_CACHE_PAYLOAD = payload
     return payload
+
+
+def cache_needs_refresh(
+    cache_payload: Optional[Dict[str, Any]] = None,
+    *,
+    now: Optional[datetime] = None,
+    refresh_hour_utc: int = AUTO_REFRESH_HOUR_UTC,
+    max_age_hours: int = AUTO_REFRESH_MAX_AGE_HOURS,
+) -> bool:
+    payload = cache_payload or load_instrument_cache()
+    updated_at = _parse_cache_timestamp(payload.get("updated_at"))
+    current_time = now or datetime.now(timezone.utc)
+
+    if updated_at is None:
+        return True
+
+    age = current_time - updated_at
+    if age >= timedelta(hours=max_age_hours):
+        return True
+
+    if current_time.hour < refresh_hour_utc:
+        return False
+
+    return updated_at.date() < current_time.date()
 
 
 def _fetch_all_instruments_live(token: str) -> List[Dict[str, Any]]:
@@ -163,6 +222,40 @@ def rebuild_instrument_cache(token: str = TOKEN, cache_path: Path = CACHE_PATH) 
     return _write_instrument_cache(items, cache_path)
 
 
+def _refresh_cache_worker(token: str, cache_path: Path) -> None:
+    global _CACHE_REFRESH_IN_PROGRESS
+    try:
+        rebuild_instrument_cache(token, cache_path)
+    finally:
+        with _CACHE_REFRESH_LOCK:
+            _CACHE_REFRESH_IN_PROGRESS = False
+
+
+def schedule_cache_refresh_if_needed(token: str = TOKEN, cache_path: Path = CACHE_PATH) -> bool:
+    global _CACHE_REFRESH_IN_PROGRESS
+    token = _safe_token(token)
+    if token == "Token":
+        return False
+
+    cache_payload = load_instrument_cache(cache_path)
+    if not cache_needs_refresh(cache_payload):
+        return False
+
+    with _CACHE_REFRESH_LOCK:
+        if _CACHE_REFRESH_IN_PROGRESS:
+            return False
+        _CACHE_REFRESH_IN_PROGRESS = True
+
+    thread = threading.Thread(
+        target=_refresh_cache_worker,
+        args=(token, cache_path),
+        daemon=True,
+        name="tinkoff-cache-refresh",
+    )
+    thread.start()
+    return True
+
+
 def merge_cached_instruments(items: List[Dict[str, Any]], cache_path: Path = CACHE_PATH) -> Dict[str, Any]:
     current = load_instrument_cache(cache_path)
     by_figi: Dict[str, Dict[str, Any]] = {
@@ -186,13 +279,13 @@ def search_instrument_cache(query: str, limit: int = 30, cache_path: Path = CACH
     query = (query or "").strip()
     if not query:
         return []
+    query_lower = query.lower()
     payload = load_instrument_cache(cache_path)
     items = payload.get("items", [])
     if not items:
         return []
 
     results: List[Dict[str, Any]] = []
-    query_lower = query.lower()
     for item in items:
         ticker = str(item.get("ticker", "") or "")
         name = str(item.get("name", "") or "")
@@ -219,7 +312,16 @@ def search_instrument_cache(query: str, limit: int = 30, cache_path: Path = CACH
             results.append(item)
 
     results.sort(key=lambda item: search_rank(query, item.get("ticker", ""), item.get("name", ""), item.get("type", "")))
-    return results[:limit]
+    seen_figis: set[str] = set()
+    deduped_results: List[Dict[str, Any]] = []
+    for item in results:
+        figi = str(item.get("figi") or "")
+        dedupe_key = figi or f"{item.get('ticker', '')}|{item.get('name', '')}|{item.get('type', '')}"
+        if dedupe_key in seen_figis:
+            continue
+        seen_figis.add(dedupe_key)
+        deduped_results.append(item)
+    return deduped_results[:limit]
 
 
 def find_instruments_live(name: str, token: str = TOKEN) -> List[Dict]:

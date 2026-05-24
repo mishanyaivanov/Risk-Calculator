@@ -10,43 +10,43 @@ def build_single_asset_explanation(
     lvar_loss: float | None = None,
 ) -> dict[str, Any]:
     severity = str(risk_status.get("severity", "yellow"))
-    label = str(risk_status.get("label", "Статус риска"))
+    label = str(risk_status.get("label", "Risk status"))
     loss_share_pct = float(risk_status.get("loss_share_pct", 0.0))
     summary = str(risk_status.get("summary", ""))
 
     takeaways = [
-        f"Параметрический VaR составляет около {loss_share_pct:.2f}% от текущего размера позиции.",
-        f"Expected Shortfall равен {expected_shortfall_loss:.2f}: это средний убыток в самых плохих сценариях.",
+        f"Parametric VaR is about {loss_share_pct:.2f}% of the current position size.",
+        f"Expected Shortfall is {expected_shortfall_loss:.2f}, which represents the average loss across the worst scenarios.",
     ]
     if lvar_loss is not None and lvar_loss > historical_var_loss:
         takeaways.append(
-            "Ликвидность заметно ухудшает результат: выход из позиции в стрессовых условиях дороже базовой оценки риска."
+            "Liquidity meaningfully worsens the result: exiting the position under stress is more expensive than the base market-risk estimate."
         )
     else:
         takeaways.append(
-            "В текущей настройке ликвидность не делает убыток существенно хуже базовой оценки риска."
+            "At the current settings, liquidity does not make the loss materially worse than the base risk estimate."
         )
 
-    next_steps = []
+    next_steps: list[str] = []
     if severity == "red":
         next_steps.extend(
             [
-                "Перед увеличением позиции проверьте стресс-сценарии.",
-                "Если такой риск не был вашей целью, подумайте о снижении объёма или о хедже.",
+                "Run stress scenarios before increasing this position.",
+                "If this level of risk was not intentional, consider reducing size or adding a hedge.",
             ]
         )
     elif severity == "yellow":
         next_steps.extend(
             [
-                "Следите не только за VaR, но и за размером позиции вместе с ликвидностью.",
-                "Если инструмент волатильный, сравните результат со стресс-сценариями.",
+                "Monitor not only VaR, but also position size together with liquidity conditions.",
+                "If the instrument is volatile, compare this result with stress scenarios.",
             ]
         )
     else:
         next_steps.extend(
             [
-                "При выбранном confidence level позиция выглядит управляемой.",
-                "Для более консервативной оценки всё равно полезно посмотреть стресс-сценарии.",
+                "At the selected confidence level, the position looks manageable.",
+                "For a more conservative view, it is still useful to review stress scenarios.",
             ]
         )
 
@@ -73,7 +73,11 @@ def build_portfolio_explanation(
     var_share_pct = (var_value / portfolio_value * 100.0) if portfolio_value > 1e-12 else 0.0
     max_weight = max(weights) if weights else 0.0
     max_weight_index = weights.index(max_weight) if weights else -1
-    concentration_asset = asset_names[max_weight_index] if max_weight_index >= 0 and max_weight_index < len(asset_names) else "the largest asset"
+    concentration_asset = (
+        asset_names[max_weight_index]
+        if 0 <= max_weight_index < len(asset_names)
+        else "the largest asset"
+    )
 
     avg_abs_correlation = 0.0
     pair_count = 0
@@ -89,44 +93,44 @@ def build_portfolio_explanation(
 
     if var_share_pct < 3.0 and max_weight < 0.4:
         severity = "green"
-        label = "Сбалансированный портфель"
-        summary = "По текущим входным данным портфель выглядит достаточно диверсифицированным."
+        label = "Balanced portfolio"
+        summary = "Based on the current inputs, the portfolio looks reasonably diversified."
     elif var_share_pct < 6.0 and max_weight < 0.6:
         severity = "yellow"
-        label = "Следите за концентрацией"
-        summary = "Портфель рабочий, но один актив или один кластер уже может давать слишком большой вклад в риск."
+        label = "Watch concentration"
+        summary = "The portfolio is workable, but one asset or one cluster may already contribute too much risk."
     else:
         severity = "red"
-        label = "Риск сконцентрирован"
-        summary = "Риск портфеля заметно сосредоточен в отдельных позициях и требует ребалансировки или хеджа."
+        label = "Risk is concentrated"
+        summary = "Portfolio risk is concentrated in a small number of positions and likely needs rebalancing or a hedge."
 
     takeaways = [
-        f"Portfolio VaR составляет около {var_share_pct:.2f}% от стоимости портфеля.",
-        f"Самый большой вес — {max_weight * 100:.1f}% в {concentration_asset}.",
-        f"Годовая волатильность оценивается в {annual_volatility * 100:.2f}%, а ожидаемая годовая доходность — в {annual_return * 100:.2f}%.",
+        f"Portfolio VaR is about {var_share_pct:.2f}% of total portfolio value.",
+        f"The largest weight is {max_weight * 100:.1f}% in {concentration_asset}.",
+        f"Annualized volatility is estimated at {annual_volatility * 100:.2f}%, while annualized expected return is {annual_return * 100:.2f}%.",
     ]
     if pair_count > 0:
         takeaways.append(
-            f"Средняя абсолютная корреляция между активами равна {avg_abs_correlation:.2f}. Это помогает понять качество диверсификации."
+            f"Average absolute correlation across assets is {avg_abs_correlation:.2f}, which helps explain diversification quality."
         )
 
-    next_steps = []
+    next_steps: list[str] = []
     if max_weight >= 0.5:
-        next_steps.append(f"Снизьте концентрацию в {concentration_asset} или компенсируйте её другой экспозицией.")
+        next_steps.append(f"Reduce concentration in {concentration_asset} or offset it with another exposure.")
     if avg_abs_correlation >= 0.65:
-        next_steps.append("Активы двигаются слишком похоже, поэтому диверсификация слабее, чем кажется по весам.")
+        next_steps.append("Assets move too similarly, so diversification is weaker than the weights may suggest.")
     if severity == "green":
-        next_steps.append("Это хороший базовый портфель, с которым можно сравнивать стресс- и hedge-сценарии.")
+        next_steps.append("Use this as a good baseline portfolio when comparing stress and hedge scenarios.")
     elif severity == "yellow":
-        next_steps.append("Запустите Factor Breakdown или Stress Scenarios, чтобы увидеть, что именно создаёт слабые места.")
+        next_steps.append("Run Factor Breakdown or Stress Scenarios to see which part of the structure creates the weak spot.")
     else:
-        next_steps.append("Следующий логичный шаг — стресс-тест или анализ хеджа: текущая структура слишком уязвима для пассивного наблюдения.")
+        next_steps.append("The next practical step is a stress test or hedge review: the current structure is too exposed for passive monitoring.")
 
     return {
         "severity": severity,
         "label": label,
         "headline": label,
         "summary": summary,
-        "takeaways": next_steps[:0] + takeaways,
+        "takeaways": takeaways,
         "next_steps": next_steps,
     }

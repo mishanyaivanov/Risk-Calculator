@@ -38,11 +38,11 @@ Primary file:
 Responsibilities:
 
 - render the whole workspace in one page
-- switch between `Novice` and `Pro` modes
+- switch between `Basic` and `Pro` modes
 - collect form inputs
 - call backend endpoints
 - show cards, tables, charts, and inline errors
-- hide raw JSON in novice mode
+- hide raw JSON in Basic mode
 
 ### 2.2 API Layer
 
@@ -111,6 +111,7 @@ Files:
 - `services/risk_copilot.py`
 - `services/hedge_constructor.py`
 - `services/excel_import.py`
+- `services/reporting.py`
 
 Responsibilities:
 
@@ -119,12 +120,13 @@ Responsibilities:
 - suggest next analytical steps
 - build before / after hedge scenarios
 - reduce manual input friction through Excel / CSV import
+- generate structured PDF reports for completed calculations
 
 ## 3. UI Modes
 
 The interface supports two experience modes.
 
-### 3.1 Novice Mode
+### 3.1 Basic Mode
 
 Visible tabs:
 
@@ -133,7 +135,7 @@ Visible tabs:
 - `MOEX`
 - `Stress Scenarios`
 
-Visible support features in novice mode:
+Visible support features in Basic mode:
 
 - Excel / CSV import for one-asset prices and portfolio composition
 - plain-language explainability blocks
@@ -152,7 +154,7 @@ Design goals:
 
 Visible tabs:
 
-- all novice tabs
+- all Basic tabs
 - `Options`
 - `Futures & SPFI`
 - `Bond & Swap`
@@ -212,8 +214,88 @@ Those calculations are performed locally in the Python mathematical engine.
 - `Risk Copilot`
 - `Hedge Constructor`
 - quick bridges from hedge suggestions into derivative workflows
+- PDF report generation for completed calculations
+- shared Tinkoff file-cache with background refresh
 
-### 5.3 Migration Status from `New functions`
+### 5.3 Service Extensions Added on Top of the Core Quant Engine
+
+These features do not replace the mathematical engine. They make the product faster, easier to use, and closer to a real decision-support service.
+
+#### Shared Tinkoff File-Cache
+
+Purpose:
+
+- avoid a slow live API search on every user query
+- provide a shared instrument dictionary for the whole service
+- keep search responsive for common tickers
+
+Implementation:
+
+- cache file: `cache/tinkoff_instruments_cache.json`
+- standard search endpoint reads from the file-cache
+- live API search remains available as a fallback button in the UI
+- live results can be merged back into the cache
+- the cache is deduplicated by `FIGI`
+- the service can rebuild the cache fully through a dedicated endpoint
+- the service can refresh the cache automatically when it becomes stale
+
+Why this matters:
+
+- faster user search
+- lower dependence on the external Tinkoff API for common flows
+- predictable shared behavior for all users
+
+#### Excel / CSV Import
+
+Purpose:
+
+- remove manual data entry for price series and portfolio weights
+
+Supported workflows:
+
+- `One Asset`
+- `Portfolio`
+
+Behavior:
+
+- upload templates are explained directly in the UI
+- file inputs are cleared after use
+- backend upload objects are closed after processing
+- imported values are normalized into the project request format
+
+#### Explainability, Risk Copilot, and Hedge Constructor
+
+Purpose:
+
+- turn a calculator into a decision-support workflow
+
+Behavior:
+
+- `Explainability` turns raw metrics into a concise human-readable summary
+- `Risk Copilot` highlights the main signals and suggested next steps
+- `Hedge Constructor` shows before / after hedge scenarios and quick actions
+- bridge actions can move a user directly into `Futures & SPFI`, `Options`, or back into a rebalanced `Portfolio`
+
+#### PDF Reporting
+
+Purpose:
+
+- generate a formal downloadable report after a user completes a calculation
+
+Current scope:
+
+- `One Asset`
+- `Portfolio`
+
+Behavior:
+
+- the user calculates first
+- then the user clicks `Create PDF Report`
+- the backend generates a structured report
+- when generation is complete, the UI exposes a `Download PDF` action
+- the report can include summary metrics, interpretation blocks, and chart snapshots
+
+### 5.4 Migration Status from `New functions`
 
 The temporary directory `New functions` was used as a teammate reference source.
 
@@ -246,6 +328,10 @@ Reference-only files that remain outside runtime:
   - serves the UI
 - `GET /api/search`
   - Tinkoff instrument search
+- `GET /api/search_live`
+  - live fallback Tinkoff search when the cache result is not enough
+- `POST /api/tinkoff_cache/rebuild`
+  - rebuild the shared Tinkoff cache file
 - `POST /api/calculate`
   - single-asset VaR / ES / LVaR
 - `POST /api/import_prices_file`
@@ -254,6 +340,12 @@ Reference-only files that remain outside runtime:
   - portfolio VaR and efficient frontier
 - `POST /api/import_portfolio_file`
   - import portfolio composition from Excel / CSV
+- `POST /api/report/single/create`
+  - create a single-asset PDF report
+- `POST /api/report/portfolio/create`
+  - create a portfolio PDF report
+- `GET /api/report/download/{report_id}`
+  - download a generated PDF report
 
 ### 6.2 Derivative and Validation Endpoints
 
@@ -387,7 +479,7 @@ Monte Carlo contract:
 
 UI behavior:
 
-- novice users do not see this tab
+- Basic-mode users do not see this tab
 - pro users can choose random or fixed-seed mode
 
 ### 7.4 Error Handling Contract
@@ -782,11 +874,36 @@ Purpose:
 
 ## 11. User Workflows
 
+The platform is intentionally organized as a layered workflow:
+
+1. Load or import data
+2. Run a pricing or risk calculation
+3. Read the interpretation
+4. Compare hedge or stress scenarios
+5. Export a report if the result needs to be documented
+
+This structure is the main product difference versus a pure formula demo.
+
 ## 11.1 One Asset
 
 Use when:
 
 - you want a simple risk estimate for one instrument
+
+Main capabilities:
+
+- Tinkoff search
+- manual price-series input
+- random demo series
+- Excel / CSV price import
+- parametric VaR
+- historical VaR
+- expected shortfall
+- liquidity-adjusted VaR
+- explainability summary
+- `Risk Copilot`
+- `Hedge Constructor`
+- PDF report generation
 
 Flow:
 
@@ -803,6 +920,23 @@ Use when:
 
 - you want covariance-based portfolio analytics
 
+Main capabilities:
+
+- Tinkoff-based portfolio lookup
+- Excel / CSV portfolio import
+- weight editing
+- covariance-based VaR
+- annualized return and volatility
+- efficient frontier
+- cumulative return chart
+- correlation matrix
+- allocation chart
+- explainability summary
+- `Risk Copilot`
+- `Hedge Constructor`
+- rebalance shortcuts
+- PDF report generation
+
 Flow:
 
 1. Add instruments
@@ -815,7 +949,7 @@ Flow:
 
 ## 11.3 MOEX
 
-Novice flow:
+Basic flow:
 
 1. Select a market category
 2. Load instruments
@@ -831,11 +965,26 @@ Pro flow:
 4. Send selected rows into derivative tabs
 5. Load candles by `SECID`
 
+Main capabilities:
+
+- browse exchange instruments
+- load option boards
+- load candles
+- derive `mu` and `sigma` from market history
+- push live market context into derivative tabs
+
 ## 11.4 Options
 
 Use when:
 
 - you need price and Greeks for one option contract
+
+Main capabilities:
+
+- Black-Scholes pricing
+- position-scaled Greeks
+- intrinsic and time-value interpretation
+- quick transfer into `Option Risk`
 
 Flow:
 
@@ -850,6 +999,17 @@ Use when:
 
 - you need pricing and linear risk for a futures / forward / SPFI position
 
+Main capabilities:
+
+- fair-price estimation
+- carry model
+- entry PnL
+- scenario PnL
+- parametric linear VaR
+- historical linear VaR
+- scenario loss comparison
+- quick hedge-template loading from `Hedge Constructor`
+
 Flow:
 
 1. Fill spot, maturity, rate, carry, quantity, multiplier
@@ -862,6 +1022,15 @@ Flow:
 Use when:
 
 - you need analytical VaR and simulation for one option position
+
+Main capabilities:
+
+- Delta-Normal approximation
+- Delta-Gamma approximation
+- Monte Carlo simulation
+- optional fixed seed
+- full revaluation Monte Carlo
+- nonlinear sensitivity interpretation
 
 Flow:
 
@@ -881,6 +1050,15 @@ Use when:
 
 - you need rolling validation of a VaR model
 
+Main capabilities:
+
+- rolling-window backtest
+- POF test
+- independence test
+- conditional coverage
+- ES diagnostics
+- qualitative interpretation of pass / warning / issue outcomes
+
 Flow:
 
 1. Provide PnL history
@@ -893,6 +1071,13 @@ Flow:
 Use when:
 
 - you need to understand which factors consume portfolio VaR
+
+Main capabilities:
+
+- delta-normal factor decomposition
+- marginal VaR
+- component VaR
+- concentration interpretation
 
 Flow:
 
@@ -908,6 +1093,15 @@ Use when:
 - you want to see the coupon / principal cashflow schedule
 - you want to calibrate a pay-floating swap spread as a hedge
 
+Main capabilities:
+
+- bond cashflow schedule generation
+- PV of coupons and principal
+- floating-leg valuation
+- fair swap-spread search
+- hedge-ratio comparison
+- rate-scenario sensitivity
+
 Flow:
 
 1. Enter issue dates, notional, coupon, and coupon frequency
@@ -919,7 +1113,7 @@ Flow:
 
 ## 11.10 Stress Scenarios
 
-Novice flow:
+Basic flow:
 
 1. Choose a predefined scenario
 2. Enter one option position
@@ -932,6 +1126,81 @@ Pro flow:
 2. Choose a scenario template or edit shocks manually
 3. Run full stress test
 4. Review scenario table and raw details
+
+Main capabilities:
+
+- preset stress templates
+- single-position quick stress
+- multi-position pro stress builder
+- custom underlying shocks
+- volatility and rate shifts
+- scenario PnL comparison
+
+## 11.11 Bridges Between Functional Blocks
+
+The project supports cross-tab workflows so that users do not need to re-enter the same information manually.
+
+Current bridges:
+
+- selected asset context -> `Options`
+- selected asset context -> `Futures & SPFI`
+- selected asset context -> `Option Risk`
+- selected asset context -> `Model Check`
+- selected asset context -> `Stress Scenarios`
+- `Options` -> `Option Risk`
+- `Hedge Constructor` single-asset linear hedge -> `Futures & SPFI`
+- `Hedge Constructor` protective put -> `Options`
+- `Hedge Constructor` portfolio rebalance -> `Portfolio`
+
+This bridge system is one of the key UX improvements in the current version.
+
+## 11.12 Tinkoff Cache Workflow
+
+The Tinkoff search flow now uses a shared file-cache instead of relying on live API search for every request.
+
+Standard behavior:
+
+1. The user searches by ticker or name
+2. The service searches the shared cache file first
+3. Exact matches are ranked first
+4. Similar results are also returned below the exact match
+
+Fallback behavior:
+
+1. If the cache result is not enough, the user can press the small live-search button
+2. The service performs a live Tinkoff API search
+3. The result can be merged back into the shared cache
+
+Refresh behavior:
+
+- the cache can be rebuilt manually through `/api/tinkoff_cache/rebuild`
+- the service can refresh the cache automatically when it is stale
+- the cache is shared by the entire service, not by individual users
+
+## 11.13 Reporting Workflow
+
+The reporting workflow is intentionally separated from the calculation step.
+
+Flow:
+
+1. Run a calculation first
+2. Review the on-screen result
+3. Click `Create PDF Report`
+4. Wait for the backend generation step
+5. Click `Download PDF`
+
+Current report types:
+
+- `One Asset`
+- `Portfolio`
+
+Report content can include:
+
+- input snapshot
+- summary metrics
+- interpretation blocks
+- risk signals
+- chart images
 
 ## 12. Local Run Instructions
 
