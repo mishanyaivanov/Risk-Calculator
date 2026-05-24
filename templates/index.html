@@ -129,6 +129,22 @@
             color: #1f3a52;
             margin-bottom: 0.25rem;
         }
+        .asset-context-strip {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+        .asset-context-strip .context-title {
+            color: #1f3a52;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+        .asset-context-strip .context-meta {
+            color: #6c757d;
+            font-size: 0.86rem;
+        }
         .quick-actions {
             display: flex;
             flex-wrap: wrap;
@@ -470,6 +486,19 @@
         </div>
 
         <div id="workspace-view">
+        <div class="status-strip asset-context-strip d-none" id="asset-context-strip">
+            <div>
+                <div class="context-title" id="asset-context-title">Актив не выбран</div>
+                <div class="context-meta" id="asset-context-meta">Сначала рассчитайте один актив или загрузите MOEX candles.</div>
+            </div>
+            <div class="quick-actions">
+                <button type="button" class="btn btn-outline-dark btn-sm" data-context-action="option">Options</button>
+                <button type="button" class="btn btn-outline-dark btn-sm" data-context-action="forward">Futures</button>
+                <button type="button" class="btn btn-outline-dark btn-sm" data-context-action="option-risk">Option Risk</button>
+                <button type="button" class="btn btn-outline-dark btn-sm" data-context-action="backtest">Model Check</button>
+                <button type="button" class="btn btn-outline-dark btn-sm" data-context-action="stress">Stress</button>
+            </div>
+        </div>
         <!-- Main Navigation -->
         <ul class="nav nav-pills mb-4 bg-white p-3 rounded shadow-sm" id="mainTabs" role="tablist">
             <li class="nav-item me-2" role="presentation">
@@ -963,6 +992,7 @@ GAZP,40</pre>
                                     <strong>Что покажет этот экран</strong>
                                     Здесь считаются цена опциона и Greeks. `Delta` показывает чувствительность к базовому активу, `Vega` — к волатильности, `Theta` — к времени.
                                 </div>
+                                <button type="button" class="btn btn-outline-dark w-100 mb-3 btn-sm" data-context-action="option">Использовать выбранный актив</button>
                                 <div class="mb-3">
                                     <label class="form-label small">Option Type</label>
                                     <select class="form-select form-select-sm" id="op-type">
@@ -1013,8 +1043,11 @@ GAZP,40</pre>
                             Price the contract here, then copy the same setup into Option Risk for VaR and simulation.
                         </div>
                         <div class="card">
-                            <div class="card-header">Results</div>
+                            <div class="card-header">Результаты</div>
                             <div class="card-body">
+                                <div id="option-interpretation-output" class="mb-3">
+                                    <p class="soft-note mb-0">После расчёта здесь появится краткая интерпретация цены и Greeks.</p>
+                                </div>
                                 <div class="result-grid mb-3" id="option-summary-cards">
                                     <div class="result-card"><div class="label">Option Value <button type="button" class="method-link" data-methodology-target="method-options-greeks">методология</button></div><div class="value" id="op-card-price">--</div></div>
                                     <div class="result-card"><div class="label">Position Delta</div><div class="value" id="op-card-delta">--</div></div>
@@ -1067,6 +1100,7 @@ GAZP,40</pre>
                                     <strong>Что значат результаты</strong>
                                     `Fair Price` — теоретическая цена контракта сейчас. `PnL vs Entry` показывает, сколько вы выигрываете или теряете относительно цены входа.
                                 </div>
+                                <button type="button" class="btn btn-outline-dark w-100 mb-3 btn-sm" data-context-action="forward">Использовать выбранный актив</button>
                                 <div class="mb-3">
                                     <label class="form-label small">Instrument Type</label>
                                     <select class="form-select form-select-sm" id="fp-type">
@@ -1115,7 +1149,7 @@ GAZP,40</pre>
                             <div class="card-header">Параметры риска</div>
                             <div class="card-body">
                                 <div class="mb-3">
-                                    <label class="form-label small">Confidence Level</label>
+                                    <label class="form-label small">Уровень доверия</label>
                                     <select class="form-select form-select-sm" id="fpvar-confidence">
                                         <option value="0.90">90%</option>
                                         <option value="0.95">95%</option>
@@ -1150,8 +1184,11 @@ GAZP,40</pre>
                             Price the contract first, then run linear risk with the same spot and size.
                         </div>
                         <div class="card">
-                            <div class="card-header">Results</div>
+                            <div class="card-header">Результаты</div>
                             <div class="card-body">
+                                <div id="forward-pricing-interpretation-output" class="mb-3">
+                                    <p class="soft-note mb-0">После расчёта здесь появится интерпретация fair price, carry и PnL.</p>
+                                </div>
                                 <div class="result-grid mb-3" id="forward-result-cards">
                                     <div class="result-card"><div class="label">Fair Price</div><div class="value" id="fp-res-fair-price">--</div></div>
                                     <div class="result-card"><div class="label">Carry</div><div class="value" id="fp-res-carry">--</div></div>
@@ -1164,8 +1201,11 @@ GAZP,40</pre>
                             </div>
                         </div>
                         <div class="card">
-                            <div class="card-header">Linear Risk Results</div>
+                            <div class="card-header">Результаты линейного риска</div>
                             <div class="card-body">
+                                <div id="forward-risk-interpretation-output" class="mb-3">
+                                    <p class="soft-note mb-0">После расчёта здесь появится интерпретация линейного риска.</p>
+                                </div>
                                 <div id="forward-risk-summary">
                                     <p class="soft-note mb-0">No linear risk calculation yet.</p>
                                 </div>
@@ -1193,6 +1233,7 @@ GAZP,40</pre>
                                     <strong>Как читать этот экран</strong>
                                     Сверху вниз это три уровня точности: `Быстрая оценка`, `Monte Carlo` и `Full Revaluation`. Monte Carlo находится в правой колонке в отдельном блоке с графиком распределения.
                                 </div>
+                                <button type="button" class="btn btn-outline-dark w-100 mb-3 btn-sm" data-context-action="option-risk">Использовать выбранный актив</button>
                                 <div class="mb-3">
                                     <label class="form-label small">Confidence Level</label>
                                     <select class="form-select form-select-sm" id="ovar-confidence">
@@ -1315,8 +1356,11 @@ GAZP,40</pre>
                             Сразу под таблицей `Option VaR Approximations` идёт блок `Monte Carlo Simulations (PnL Distribution)`. В нём строится распределение результатов по тысячам сценариев. Если включён `Full Revaluation`, ниже появляется ещё и более точная нелинейная оценка.
                         </div>
                         <div class="card">
-                            <div class="card-header">Results</div>
+                            <div class="card-header">Результаты</div>
                             <div class="card-body">
+                                <div id="ovar-interpretation-output" class="mb-3">
+                                    <p class="soft-note mb-0">После расчёта здесь появится краткая интерпретация Option VaR и Monte Carlo.</p>
+                                </div>
                                 <div id="ovar-summary-cards" class="result-grid mb-3">
                                     <div class="result-card"><div class="label">Delta Cash</div><div class="value">--</div></div>
                                     <div class="result-card"><div class="label">Gamma Cash</div><div class="value">--</div></div>
@@ -1369,12 +1413,13 @@ GAZP,40</pre>
                                     <strong>Когда использовать</strong>
                                     Если у вас уже есть исторический ряд PnL, этот экран поможет понять, не занижает ли модель риск и не слишком ли оптимистичны её оценки.
                                 </div>
+                                <button type="button" class="btn btn-outline-dark w-100 mb-3 btn-sm" data-context-action="backtest">Взять P&L выбранного актива</button>
                                 <div class="mb-3">
-                                    <label class="form-label small">P&L Series (comma-separated)</label>
+                                    <label class="form-label small">P&L-ряд через запятую</label>
                                     <textarea class="form-control form-control-sm" id="bt-pnl-series" rows="5"></textarea>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label small">Confidence Level</label>
+                                    <label class="form-label small">Уровень доверия</label>
                                     <select class="form-select form-select-sm" id="bt-confidence">
                                         <option value="0.90">90%</option>
                                         <option value="0.95">95%</option>
@@ -1383,22 +1428,25 @@ GAZP,40</pre>
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label small">Rolling Window Size</label>
+                                    <label class="form-label small">Размер окна</label>
                                     <input type="number" class="form-control form-control-sm" id="bt-window" value="250">
                                 </div>
-                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="runBacktestBtn">Run Backtest</button>
+                                <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="runBacktestBtn">Запустить backtest</button>
                             </div>
                         </div>
                     </div>
                     <div class="col-lg-8">
                         <div class="card">
-                            <div class="card-header">Results</div>
+                            <div class="card-header">Результаты</div>
                             <div class="card-body">
-                                <h6>Rolling Backtest Summary <button type="button" class="method-link ms-1" data-methodology-target="method-backtesting">методология</button></h6>
+                                <div id="backtest-interpretation-output" class="mb-3">
+                                    <p class="soft-note mb-0">После запуска здесь появится краткая интерпретация результата.</p>
+                                </div>
+                                <h6>Сводка rolling backtest <button type="button" class="method-link ms-1" data-methodology-target="method-backtesting">методология</button></h6>
                                 <div id="backtest-summary-output"><p class="soft-note">Пока данных нет.</p></div>
-                                <h6 class="mt-3">Conditional Coverage Test</h6>
+                                <h6 class="mt-3">Проверка пробоев VaR</h6>
                                 <div id="backtest-cc-output"><p class="soft-note">Пока данных нет.</p></div>
-                                <h6 class="mt-3">ES Diagnostics</h6>
+                                <h6 class="mt-3">Диагностика Expected Shortfall</h6>
                                 <div id="backtest-es-output"><p class="soft-note">Пока данных нет.</p></div>
                             </div>
                         </div>
@@ -1447,8 +1495,11 @@ GAZP,40</pre>
                     </div>
                     <div class="col-lg-8">
                         <div class="card">
-                            <div class="card-header">Results</div>
+                            <div class="card-header">Результаты</div>
                             <div class="card-body">
+                                <div id="risk-attribution-interpretation-output" class="mb-3">
+                                    <p class="soft-note mb-0">После расчёта здесь появится вывод по главным факторам риска.</p>
+                                </div>
                                 <h6>Risk Attribution Details</h6>
                                 <div id="risk-attribution-output"><p class="soft-note">Пока данных нет.</p></div>
                             </div>
@@ -1551,8 +1602,11 @@ GAZP,40</pre>
                             Заполните выпуск, кривую и сценарии, затем нажмите `Calculate Bond & Swap`.
                         </div>
                         <div class="card">
-                            <div class="card-header">Results</div>
+                            <div class="card-header">Результаты</div>
                             <div class="card-body">
+                                <div id="bond-swap-interpretation-output" class="mb-3">
+                                    <p class="soft-note mb-0">После расчёта здесь появится интерпретация PV и hedge construction.</p>
+                                </div>
                                 <div id="bond-swap-summary-cards" class="result-grid mb-3">
                                     <div class="result-card"><div class="label">Coupon PV</div><div class="value">--</div></div>
                                     <div class="result-card"><div class="label">Principal PV</div><div class="value">--</div></div>
@@ -1585,6 +1639,7 @@ GAZP,40</pre>
                         <div class="card novice-only">
                             <div class="card-header">Быстрый stress-check</div>
                             <div class="card-body">
+                                <button type="button" class="btn btn-outline-dark w-100 mb-3 btn-sm" data-context-action="stress">Использовать выбранный актив</button>
                                 <div class="mb-3">
                                     <label class="form-label small">Сценарий</label>
                                     <select class="form-select form-select-sm" id="st-simple-preset">
@@ -1646,6 +1701,7 @@ GAZP,40</pre>
                                     <strong>Что такое stress-сценарий</strong>
                                     Вы задаёте, что случилось с рынком: насколько упал или вырос базовый актив, как сдвинулась волатильность и ставка. Сервис затем пересчитывает стоимость каждой позиции и показывает возможный результат портфеля.
                                 </div>
+                                <button type="button" class="btn btn-outline-dark w-100 mb-3 btn-sm" data-context-action="stress">Использовать выбранный актив</button>
                                 <div class="guided-step">1. Позиции</div>
                                 <div class="subsection-note">Каждая карточка ниже — это один опцион в вашем портфеле. Никакого JSON вводить не нужно.</div>
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1697,6 +1753,9 @@ GAZP,40</pre>
                         <div class="card">
                             <div class="card-header">Результаты</div>
                             <div class="card-body">
+                                <div id="stress-interpretation-output" class="mb-3">
+                                    <p class="soft-note mb-0">После расчёта здесь появится краткий вывод по стресс-сценарию.</p>
+                                </div>
                                 <h6>Stress Test Scenarios</h6>
                                 <div id="stress-test-output"><p class="soft-note">Пока данных нет.</p></div>
                             </div>
@@ -2028,6 +2087,29 @@ GAZP,40</pre>
                 `).join('')}
             </div>
         `;
+        const renderInterpretationPanel = ({ title, subtitle = '', severity = 'info', signals = [], action = '' }) => {
+            const safeSeverity = ['success', 'warning', 'danger', 'info', 'secondary'].includes(severity) ? severity : 'info';
+            const signalCards = signals.map(signal => `
+                <div class="copilot-signal">
+                    <div class="signal-label">${escapeHtml(signal.label)}</div>
+                    <div class="signal-value">${escapeHtml(signal.value)}</div>
+                    <div class="signal-text">${escapeHtml(signal.text)}</div>
+                </div>
+            `).join('');
+            return `
+                <div class="copilot-panel">
+                    <div class="title-row">
+                        <div>
+                            <div class="headline">${escapeHtml(title)}</div>
+                            ${subtitle ? `<div class="subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                        </div>
+                        <span class="badge bg-${safeSeverity}">${safeSeverity === 'success' ? 'OK' : safeSeverity === 'warning' ? 'Внимание' : safeSeverity === 'danger' ? 'Риск' : 'Инфо'}</span>
+                    </div>
+                    ${signalCards ? `<div class="copilot-grid">${signalCards}</div>` : ''}
+                    ${action ? `<div class="small mt-2"><strong>Что делать дальше:</strong> ${escapeHtml(action)}</div>` : ''}
+                </div>
+            `;
+        };
         const renderRawDetails = (payload) => {
             if (currentExperienceMode === 'novice') return '';
             return `
@@ -2324,6 +2406,8 @@ GAZP,40</pre>
                 { label: 'Full PV', value: fmtCurrency(data.bond_pv?.coupon_plus_principal) },
                 { label: 'Constructions', value: safeNumber((data.constructions || []).length, 0) },
             ]);
+            document.getElementById('bond-swap-interpretation-output').innerHTML =
+                renderBondSwapInterpretation(data);
 
             document.getElementById('bond-swap-constructions-output').innerHTML = renderSimpleTable(
                 (data.constructions || []).map((row) => ({
@@ -2404,9 +2488,19 @@ GAZP,40</pre>
             selectedInstrument: null,
         };
 
+        const readStoredAssetContext = () => {
+            try {
+                const parsed = JSON.parse(localStorage.getItem('risk-selected-asset-context') || 'null');
+                return parsed && typeof parsed === 'object' ? parsed : null;
+            } catch (_error) {
+                return null;
+            }
+        };
+
         let portfolioItems = [];
         let currentMode = 'tinkoff';
         let currentExperienceMode = localStorage.getItem('risk-ui-mode') || 'novice';
+        let selectedAssetContext = readStoredAssetContext();
         let lastSingleCalculation = null;
         let lastSingleResult = null;
         let lastPortfolioCalculation = null;
@@ -2515,6 +2609,246 @@ GAZP,40</pre>
             const node = document.getElementById(id);
             if (!node) return;
             node.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(body)}</span>`;
+        };
+
+        const deriveReturnStatsFromPrices = (prices = []) => {
+            const numericPrices = prices.map(Number).filter(value => Number.isFinite(value));
+            if (numericPrices.length < 2) return { returns: [], muDaily: null, sigmaDaily: null };
+
+            const returns = [];
+            for (let index = 1; index < numericPrices.length; index += 1) {
+                const previous = numericPrices[index - 1];
+                if (previous > 0) {
+                    returns.push((numericPrices[index] / previous) - 1);
+                }
+            }
+            if (returns.length === 0) return { returns, muDaily: null, sigmaDaily: null };
+
+            const muDaily = returns.reduce((acc, value) => acc + value, 0) / returns.length;
+            const variance = returns.reduce((acc, value) => acc + ((value - muDaily) ** 2), 0) / Math.max(returns.length - 1, 1);
+            return {
+                returns,
+                muDaily,
+                sigmaDaily: Math.sqrt(Math.max(variance, 0)),
+            };
+        };
+
+        const annualizeDailyVolatility = (sigmaDaily, fallback = 0.2) => {
+            const sigma = Number(sigmaDaily);
+            if (!Number.isFinite(sigma) || sigma <= 0) return fallback;
+            return Math.max(0.0001, sigma * Math.sqrt(252));
+        };
+
+        const buildPnlFromPrices = (prices = [], positionSize = 1) => {
+            const numericPrices = prices.map(Number).filter(value => Number.isFinite(value));
+            const scale = Number(positionSize) || 1;
+            if (numericPrices.length < 2) return [];
+            const pnl = [];
+            for (let index = 1; index < numericPrices.length; index += 1) {
+                pnl.push((numericPrices[index] - numericPrices[index - 1]) * scale);
+            }
+            return pnl;
+        };
+
+        const renderAssetContext = () => {
+            const strip = document.getElementById('asset-context-strip');
+            if (!strip) return;
+
+            if (!selectedAssetContext) {
+                strip.classList.add('d-none');
+                return;
+            }
+
+            const titleNode = document.getElementById('asset-context-title');
+            const metaNode = document.getElementById('asset-context-meta');
+            const label = selectedAssetContext.label || selectedAssetContext.ticker || 'Выбранный актив';
+            const parts = [
+                selectedAssetContext.source ? `источник: ${selectedAssetContext.source}` : null,
+                Number.isFinite(Number(selectedAssetContext.lastPrice)) ? `spot: ${safeNumber(selectedAssetContext.lastPrice, 4)}` : null,
+                Array.isArray(selectedAssetContext.prices) && selectedAssetContext.prices.length ? `цен: ${selectedAssetContext.prices.length}` : null,
+                Number.isFinite(Number(selectedAssetContext.muDaily)) ? `mu: ${safeNumber(selectedAssetContext.muDaily, 6)}` : null,
+                Number.isFinite(Number(selectedAssetContext.sigmaDaily)) ? `sigma: ${safeNumber(selectedAssetContext.sigmaDaily, 6)}` : null,
+            ].filter(Boolean);
+
+            titleNode.textContent = `Выбранный актив: ${label}`;
+            metaNode.textContent = parts.join(' · ');
+            strip.classList.remove('d-none');
+        };
+
+        const setSelectedAssetContext = (context) => {
+            if (!context) {
+                selectedAssetContext = null;
+                localStorage.removeItem('risk-selected-asset-context');
+                renderAssetContext();
+                return;
+            }
+
+            const prices = Array.isArray(context.prices)
+                ? context.prices.map(Number).filter(value => Number.isFinite(value))
+                : [];
+            const derived = deriveReturnStatsFromPrices(prices);
+            const positionSize = Number(context.positionSize ?? 1) || 1;
+            const pnlSeries = Array.isArray(context.pnlSeries) && context.pnlSeries.length
+                ? context.pnlSeries.map(Number).filter(value => Number.isFinite(value))
+                : buildPnlFromPrices(prices, positionSize);
+
+            selectedAssetContext = {
+                ...context,
+                prices,
+                pnlSeries,
+                positionSize,
+                lastPrice: Number.isFinite(Number(context.lastPrice))
+                    ? Number(context.lastPrice)
+                    : (prices.length ? prices[prices.length - 1] : null),
+                muDaily: Number.isFinite(Number(context.muDaily)) ? Number(context.muDaily) : derived.muDaily,
+                sigmaDaily: Number.isFinite(Number(context.sigmaDaily)) ? Number(context.sigmaDaily) : derived.sigmaDaily,
+                updatedAt: new Date().toISOString(),
+            };
+            localStorage.setItem('risk-selected-asset-context', JSON.stringify(selectedAssetContext));
+            renderAssetContext();
+        };
+
+        const requireAssetContext = (feedbackId) => {
+            if (selectedAssetContext && Number.isFinite(Number(selectedAssetContext.lastPrice))) {
+                return selectedAssetContext;
+            }
+            setInlineFeedback(
+                feedbackId,
+                'Сначала рассчитайте один актив или загрузите MOEX candles. После этого сюда можно будет автоматически перенести spot, историю и волатильность.',
+                'warning',
+                'Актив не выбран'
+            );
+            return null;
+        };
+
+        const showTab = (tabId) => {
+            if (PRO_TAB_BUTTON_IDS.includes(tabId) && currentExperienceMode !== 'pro') {
+                applyExperienceMode('pro');
+            }
+            bootstrap.Tab.getOrCreateInstance(document.getElementById(tabId)).show();
+        };
+
+        const applyAssetContextToOptions = () => {
+            const context = requireAssetContext('option-feedback');
+            if (!context) return;
+            const spot = Number(context.lastPrice);
+            const annualVol = annualizeDailyVolatility(context.sigmaDaily);
+
+            showTab('option-pricing-tab');
+            document.getElementById('op-spot').value = spot.toFixed(4);
+            document.getElementById('op-strike').value = spot.toFixed(4);
+            document.getElementById('op-volatility').value = annualVol.toFixed(4);
+            document.getElementById('op-quantity').value = String(Number(context.positionSize || 1));
+            document.getElementById('op-multiplier').value = String(Number(context.multiplier || 1));
+            setStatusStrip(
+                'option-context-output',
+                `Loaded ${context.label || context.ticker || 'asset'} into Options`,
+                'Spot, ATM strike, annualized volatility, quantity and multiplier were copied from the selected asset context.'
+            );
+            setInlineFeedback('option-feedback', 'Параметры базового актива подставлены. Strike и maturity всё равно стоит проверить под конкретный контракт.', 'success', 'Актив перенесён');
+        };
+
+        const applyAssetContextToForward = () => {
+            const context = requireAssetContext('forward-feedback');
+            if (!context) return;
+            const spot = Number(context.lastPrice);
+
+            showTab('forward-pricing-tab');
+            document.getElementById('fp-spot').value = spot.toFixed(4);
+            document.getElementById('fp-entry-price').value = spot.toFixed(4);
+            document.getElementById('fp-scenario-spot').value = (spot * 0.95).toFixed(4);
+            document.getElementById('fp-quantity').value = String(Number(context.positionSize || 1));
+            document.getElementById('fp-multiplier').value = String(Number(context.multiplier || 1));
+            if (Number.isFinite(Number(context.muDaily))) {
+                document.getElementById('fpvar-mu').value = Number(context.muDaily).toFixed(6);
+            }
+            if (Number.isFinite(Number(context.sigmaDaily))) {
+                document.getElementById('fpvar-sigma').value = Number(context.sigmaDaily).toFixed(6);
+            }
+            setStatusStrip(
+                'forward-context-output',
+                `Loaded ${context.label || context.ticker || 'asset'} into Futures & SPFI`,
+                'Spot, entry price, scenario spot, size, mu and sigma were copied from the selected asset context.'
+            );
+            setInlineFeedback('forward-feedback', 'Базовый актив перенесён. Срок, ставка и carry остаются параметрами контракта.', 'success', 'Актив перенесён');
+        };
+
+        const applyAssetContextToOptionRisk = () => {
+            const context = requireAssetContext('option-var-feedback');
+            if (!context) return;
+            const spot = Number(context.lastPrice);
+            const annualVol = annualizeDailyVolatility(context.sigmaDaily);
+
+            showTab('option-var-tab');
+            document.getElementById('ovar-op-spot').value = spot.toFixed(4);
+            document.getElementById('ovar-op-strike').value = spot.toFixed(4);
+            document.getElementById('ovar-op-volatility').value = annualVol.toFixed(4);
+            document.getElementById('ovar-op-quantity').value = String(Number(context.positionSize || 1));
+            document.getElementById('ovar-op-multiplier').value = String(Number(context.multiplier || 1));
+            if (Number.isFinite(Number(context.muDaily))) {
+                document.getElementById('ovar-mu').value = Number(context.muDaily).toFixed(6);
+            }
+            if (Number.isFinite(Number(context.sigmaDaily))) {
+                document.getElementById('ovar-sigma').value = Number(context.sigmaDaily).toFixed(6);
+            }
+            setStatusStrip(
+                'option-risk-context-output',
+                `Loaded ${context.label || context.ticker || 'asset'} into Option Risk`,
+                'Spot, ATM strike, annualized volatility, daily mu/sigma and size were copied. Contract-specific fields remain editable.'
+            );
+            setInlineFeedback('option-var-feedback', 'Рыночные параметры перенесены. Тип опциона, срок и ставка всё ещё задаются пользователем.', 'success', 'Актив перенесён');
+        };
+
+        const applyAssetContextToBacktest = () => {
+            const context = requireAssetContext('backtest-feedback');
+            if (!context) return;
+            const pnl = Array.isArray(context.pnlSeries) ? context.pnlSeries.filter(value => Number.isFinite(Number(value))) : [];
+            if (pnl.length === 0) {
+                setInlineFeedback('backtest-feedback', 'Для выбранного актива нет P&L-ряда. Загрузите историю цен через один актив или MOEX candles.', 'warning', 'Нет P&L-ряда');
+                return;
+            }
+
+            showTab('backtesting-tab');
+            document.getElementById('bt-pnl-series').value = pnl.map(value => Number(value).toFixed(6)).join(', ');
+            if (pnl.length > 20) {
+                document.getElementById('bt-window').value = String(Math.min(250, Math.max(20, Math.floor(pnl.length / 2))));
+            }
+            setInlineFeedback('backtest-feedback', `P&L-ряд выбранного актива перенесён (${pnl.length} наблюдений).`, 'success', 'Данные перенесены');
+        };
+
+        const applyAssetContextToStress = () => {
+            const context = requireAssetContext('stress-feedback');
+            if (!context) return;
+            const spot = Number(context.lastPrice);
+            const annualVol = annualizeDailyVolatility(context.sigmaDaily);
+            const stressPosition = {
+                ...defaultStressPosition(),
+                spot,
+                strike: spot,
+                volatility: annualVol,
+                quantity: Number(context.positionSize || 1),
+                multiplier: Number(context.multiplier || 1),
+            };
+
+            bootstrap.Tab.getOrCreateInstance(document.getElementById('stress-testing-tab')).show();
+            document.getElementById('st-simple-spot').value = spot.toFixed(4);
+            document.getElementById('st-simple-strike').value = spot.toFixed(4);
+            document.getElementById('st-simple-volatility').value = annualVol.toFixed(4);
+            document.getElementById('st-simple-quantity').value = String(Number(context.positionSize || 1));
+            document.getElementById('st-simple-multiplier').value = String(Number(context.multiplier || 1));
+            renderStressProPositions([stressPosition]);
+            setInlineFeedback('stress-feedback', 'Spot, ATM strike, volatility and size copied into quick stress and pro stress position.', 'success', 'Актив перенесён');
+        };
+
+        const applyAssetContextAction = (action) => {
+            const handlers = {
+                option: applyAssetContextToOptions,
+                forward: applyAssetContextToForward,
+                'option-risk': applyAssetContextToOptionRisk,
+                backtest: applyAssetContextToBacktest,
+                stress: applyAssetContextToStress,
+            };
+            handlers[action]?.();
         };
 
         const renderExplanationBox = (explanation) => {
@@ -2855,9 +3189,9 @@ GAZP,40</pre>
 
         const verdictLabel = (verdict) => {
             const normalized = String(verdict || '').toLowerCase();
-            if (normalized === 'green') return 'Green';
-            if (normalized === 'yellow') return 'Yellow';
-            if (normalized === 'red') return 'Red';
+            if (normalized === 'green') return 'OK';
+            if (normalized === 'yellow') return 'Внимание';
+            if (normalized === 'red') return 'Проблема';
             return '--';
         };
 
@@ -2871,6 +3205,259 @@ GAZP,40</pre>
                         ? 'bg-danger'
                         : 'bg-secondary';
             return `<span class="badge ${badgeClass}">${escapeHtml(verdictLabel(verdict))}</span>`;
+        };
+
+        const verdictSeverity = (verdict) => {
+            const normalized = String(verdict || '').toLowerCase();
+            if (normalized === 'green') return 'success';
+            if (normalized === 'yellow') return 'warning';
+            if (normalized === 'red') return 'danger';
+            return 'secondary';
+        };
+
+        const renderBacktestInterpretation = (data, confidence, window) => {
+            const cc = data.conditional_coverage_test || {};
+            const pof = cc.pof || {};
+            const independence = cc.independence || {};
+            const es = data.es_diagnostics || {};
+            const alpha = Math.max(0, 1 - Number(confidence || 0));
+            const observations = Number(pof.observations || data.rolling_history?.realized_pnl?.length || 0);
+            const exceptions = Number(pof.exceptions || 0);
+            const expected = Number(pof.expected_exceptions || (observations * alpha));
+            const exceptionRate = Number(pof.exception_rate || 0);
+            const expectedRatePct = alpha * 100;
+            const actualRatePct = exceptionRate * 100;
+            const pofVerdict = String(pof.verdict || 'green').toLowerCase();
+            const indVerdict = String(independence.verdict || 'green').toLowerCase();
+            const ccVerdict = String(cc.verdict || pof.verdict || 'green').toLowerCase();
+            const tailRatio = Number(es.tail_loss_ratio || 0);
+            const isSmallSample = observations < 30 || expected < 1;
+
+            const isTooFewBreaches = exceptions < expected * 0.7;
+            const isTooManyBreaches = exceptions > expected * 1.3;
+            let coverageText = 'Количество пробоев близко к ожидаемому: модель выглядит согласованной с выбранным confidence level.';
+            if (isSmallSample) {
+                coverageText = 'Наблюдений для backtest мало, поэтому статистический вывод слабый. На таком окне отсутствие пробоев ещё не доказывает качество модели.';
+            } else if (pofVerdict !== 'green' && isTooFewBreaches) {
+                coverageText = 'Пробоев заметно меньше ожидаемого. Это обычно означает, что VaR получился слишком строгим: модель скорее переоценивает риск, а не занижает его.';
+            } else if (pofVerdict !== 'green' && isTooManyBreaches) {
+                coverageText = 'Пробоев заметно больше ожидаемого. Это тревожный сигнал: модель может занижать риск и слишком оптимистично оценивать плохие дни.';
+            } else if (pofVerdict !== 'green') {
+                coverageText = 'Количество пробоев статистически не похоже на ожидаемое для выбранного confidence level. Нужно проверить окно, данные и параметры модели.';
+            }
+
+            const independenceText = indVerdict === 'green'
+                ? 'Пробои не выглядят сгруппированными. Это хороший признак: плохие дни не идут подозрительными сериями.'
+                : 'Пробои могут идти сериями. Это значит, что модель плохо ловит режимы рынка: после одного плохого дня риск повышается сильнее, чем модель ожидает.';
+
+            let esText = 'ES близок к фактическим хвостовым потерям.';
+            if (Number(es.tail_events || 0) === 0) {
+                esText = 'Хвостовых событий для ES не было, поэтому сравнивать тяжесть хвоста пока не с чем.';
+            } else if (tailRatio > 1.15) {
+                esText = 'Фактические хвостовые потери выше predicted ES. Это признак, что хвост риска может быть недооценён.';
+            } else if (tailRatio > 0 && tailRatio < 0.85) {
+                esText = 'Фактические хвостовые потери ниже predicted ES. Это похоже на консервативную оценку тяжести хвоста.';
+            }
+
+            const severity = isSmallSample ? 'warning' : verdictSeverity(ccVerdict);
+            const headline = isSmallSample
+                ? 'Backtest запущен, но данных мало'
+                : ccVerdict === 'green'
+                ? 'Модель проходит backtest'
+                : (isTooFewBreaches ? 'Модель выглядит слишком консервативной' : 'Модель требует внимания');
+            const action = isSmallSample
+                ? 'Увеличьте P&L-ряд или уменьшите rolling window так, чтобы после окна оставалось хотя бы несколько десятков наблюдений. Тогда POF и Conditional Coverage станут информативнее.'
+                : ccVerdict === 'green'
+                ? 'Можно использовать результат как sanity-check модели, но периодически повторять проверку на новом окне данных.'
+                : (isTooFewBreaches
+                    ? 'Для демонстрации это не критичная ошибка: риск не занижен. Но можно уменьшить строгость confidence level или проверить rolling window, чтобы модель не была чрезмерно осторожной.'
+                    : 'Перед использованием модели стоит увеличить окно, проверить качество P&L-ряда и сравнить Historical VaR с parametric VaR или stress-сценариями.');
+
+            return `
+                <div class="alert alert-${severity} mb-3">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                        <div>
+                            <strong>${escapeHtml(headline)}</strong>
+                            <div class="small mt-1">
+                                Фактических пробоев: ${escapeHtml(String(exceptions))} из ${escapeHtml(String(observations))}.
+                                Ожидалось примерно ${escapeHtml(safeNumber(expected, 2))} при вероятности хвоста ${escapeHtml(safeNumber(expectedRatePct, 1))}%.
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            ${verdictBadge(pof.verdict)}
+                            ${verdictBadge(independence.verdict)}
+                            ${verdictBadge(cc.verdict)}
+                        </div>
+                    </div>
+                </div>
+                <div class="copilot-panel mb-3">
+                    <div class="headline">Как читать результат</div>
+                    <div class="copilot-grid">
+                        <div class="copilot-signal">
+                            <div class="signal-label">Покрытие VaR</div>
+                            <div class="signal-value">${escapeHtml(safeNumber(actualRatePct, 2))}% vs ${escapeHtml(safeNumber(expectedRatePct, 2))}%</div>
+                            <div class="signal-text">${escapeHtml(coverageText)}</div>
+                        </div>
+                        <div class="copilot-signal">
+                            <div class="signal-label">Независимость пробоев</div>
+                            <div class="signal-value">${escapeHtml(verdictLabel(independence.verdict))}</div>
+                            <div class="signal-text">${escapeHtml(independenceText)}</div>
+                        </div>
+                        <div class="copilot-signal">
+                            <div class="signal-label">Expected Shortfall</div>
+                            <div class="signal-value">Хвостовой коэффициент ${escapeHtml(safeNumber(tailRatio, 2))}</div>
+                            <div class="signal-text">${escapeHtml(esText)}</div>
+                        </div>
+                    </div>
+                    <div class="small"><strong>Что делать дальше:</strong> ${escapeHtml(action)}</div>
+                    <div class="small text-muted mt-2">Окно: ${escapeHtml(String(window))}. Чем больше окно, тем стабильнее оценка, но тем медленнее модель реагирует на новый режим рынка.</div>
+                </div>
+            `;
+        };
+
+        const renderOptionPricingInterpretation = (data, payload, scale) => {
+            const intrinsic = payload.option_type === 'call'
+                ? Math.max(payload.spot - payload.strike, 0)
+                : Math.max(payload.strike - payload.spot, 0);
+            const timeValue = Math.max(Number(data.price || 0) - intrinsic, 0);
+            const deltaScaled = Number(data.delta || 0) * scale;
+            const vegaScaled = Number(data.vega || 0) * scale;
+            const thetaScaled = Number(data.theta || 0) * scale;
+            const moneyness = payload.strike ? payload.spot / payload.strike : 1;
+            const moneynessText = moneyness > 1.03
+                ? (payload.option_type === 'call' ? 'опцион уже в деньгах' : 'put сейчас вне денег')
+                : moneyness < 0.97
+                    ? (payload.option_type === 'put' ? 'опцион уже в деньгах' : 'call сейчас вне денег')
+                    : 'spot близко к strike, опцион около ATM';
+            const thetaText = thetaScaled < 0
+                ? 'время работает против длинной позиции: при прочих равных стоимость будет снижаться'
+                : 'theta не давит на позицию или позиция похожа на короткую по времени';
+            return renderInterpretationPanel({
+                title: 'Интерпретация опциона',
+                subtitle: `Стоимость позиции: ${safeNumber(Number(data.price || 0) * scale, 4)}. ${moneynessText}.`,
+                severity: Math.abs(deltaScaled) > Math.max(1, Math.abs(vegaScaled)) ? 'warning' : 'info',
+                signals: [
+                    { label: 'Положение к strike', value: safeNumber(moneyness, 3), text: `Intrinsic value: ${safeNumber(intrinsic, 4)}, time value: ${safeNumber(timeValue, 4)}.` },
+                    { label: 'Delta', value: safeNumber(deltaScaled, 4), text: 'Показывает, насколько позиция чувствительна к движению базового актива.' },
+                    { label: 'Vega / Theta', value: `${safeNumber(vegaScaled, 4)} / ${safeNumber(thetaScaled, 4)}`, text: `Vega показывает чувствительность к волатильности, theta — эффект времени; ${thetaText}.` },
+                ],
+                action: 'Если delta слишком велика, сравните позицию с линейным хеджем. Если vega велика, проверьте Option Risk и stress-сценарии с ростом волатильности.',
+            });
+        };
+
+        const renderForwardPricingInterpretation = (data, payload) => {
+            const pnl = Number(data.pnl_vs_entry || 0);
+            const scenarioPnl = Number(data.scenario_pnl_vs_entry || 0);
+            const fairVsSpotPct = payload.spot ? ((Number(data.fair_price || 0) / payload.spot) - 1) * 100 : 0;
+            const severity = pnl < 0 || scenarioPnl < 0 ? 'warning' : 'success';
+            return renderInterpretationPanel({
+                title: pnl >= 0 ? 'Контракт выглядит в плюсе относительно входа' : 'Контракт ниже цены входа',
+                subtitle: `Fair price отличается от spot примерно на ${safeNumber(fairVsSpotPct, 2)}%.`,
+                severity,
+                signals: [
+                    { label: 'Справедливая цена', value: safeNumber(data.fair_price, 4), text: 'Теоретическая цена с учётом ставки, срока и carry.' },
+                    { label: 'PnL от входа', value: safeNumber(pnl, 4), text: pnl >= 0 ? 'Текущая теоретическая цена выше цены входа.' : 'Текущая теоретическая цена ниже цены входа.' },
+                    { label: 'Сценарий', value: safeNumber(scenarioPnl, 4), text: 'Показывает, что будет с контрактом при заданной сценарной цене базового актива.' },
+                ],
+                action: 'После pricing запустите Linear Risk ниже: он покажет VaR, ES и сценарную потерю на том же контракте.',
+            });
+        };
+
+        const renderForwardRiskInterpretation = (data, payload) => {
+            const paramVaR = Number(data.parametric?.var_loss || 0);
+            const histVaR = Number(data.historical?.var?.var_loss || 0);
+            const scenarioPnl = Number(data.scenario?.pnl || 0);
+            const exposure = Math.abs(Number(data.exposure_cash || 0));
+            const riskPct = exposure > 0 ? (Math.max(paramVaR, histVaR) / exposure) * 100 : 0;
+            const severity = scenarioPnl < -Math.max(paramVaR, histVaR, 1) ? 'danger' : riskPct > 5 ? 'warning' : 'success';
+            return renderInterpretationPanel({
+                title: severity === 'danger' ? 'Сценарий жестче обычного VaR' : 'Линейный риск рассчитан',
+                subtitle: `Максимальный VaR из доступных методов: ${safeNumber(Math.max(paramVaR, histVaR), 4)}.`,
+                severity,
+                signals: [
+                    { label: 'Экспозиция', value: safeNumber(data.exposure_cash, 4), text: 'Денежная чувствительность позиции к движению базового актива.' },
+                    { label: 'VaR / экспозиция', value: `${safeNumber(riskPct, 2)}%`, text: 'Показывает, какая доля экспозиции может быть потеряна на выбранном горизонте.' },
+                    { label: 'Сценарный PnL', value: safeNumber(scenarioPnl, 4), text: scenarioPnl < 0 ? 'В заданном сценарии позиция теряет деньги.' : 'В заданном сценарии позиция не убыточна.' },
+                ],
+                action: data.historical ? 'Сравните parametric и historical VaR: сильное расхождение обычно означает, что исторический ряд содержит нестандартные движения.' : 'Для более надежной historical VaR загрузите MOEX candles или выберите актив через общий контекст.',
+            });
+        };
+
+        const renderOptionRiskInterpretation = (data, optionParams, deltaCash, gammaCash) => {
+            const mcVar = Number(data.mc_var || 0);
+            const mcEs = Number(data.mc_es || 0);
+            const fullVar = Number(data.full_revaluation?.var || 0);
+            const dgVar = Number(data.approximations?.var_dg || 0);
+            const nonlinearGap = fullVar > 0 && mcVar > 0 ? ((fullVar / mcVar) - 1) * 100 : 0;
+            const severity = fullVar > mcVar * 1.2 || mcEs > mcVar * 1.4 ? 'warning' : 'success';
+            return renderInterpretationPanel({
+                title: 'Option VaR рассчитан',
+                subtitle: fullVar > 0 ? `Full revaluation отличается от MC VaR на ${safeNumber(nonlinearGap, 1)}%.` : 'Быстрая оценка построена по delta-gamma и Monte Carlo.',
+                severity,
+                signals: [
+                    { label: 'MC VaR / ES', value: `${safeNumber(mcVar, 4)} / ${safeNumber(mcEs, 4)}`, text: 'ES обычно выше VaR, потому что смотрит среднюю тяжесть худших сценариев.' },
+                    { label: 'Delta-Gamma VaR', value: safeNumber(dgVar, 4), text: 'Быстрая нелинейная аппроксимация. Хороша для первого взгляда, но хуже при больших движениях.' },
+                    { label: 'Delta / Gamma cash', value: `${safeNumber(deltaCash, 2)} / ${safeNumber(gammaCash, 2)}`, text: 'Delta отвечает за направленный риск, gamma — за нелинейность реакции опциона.' },
+                ],
+                action: fullVar > 0 ? 'Если Full Revaluation заметно выше MC VaR, стоит отметить, что простая delta-gamma оценка может недооценивать нелинейность.' : 'Для более точной проверки включите Full Revaluation и задайте шоки волатильности и ставки.',
+            });
+        };
+
+        const renderRiskAttributionInterpretation = (data) => {
+            const rows = Array.isArray(data.rows) ? data.rows : [];
+            const sorted = [...rows].sort((a, b) => Math.abs(Number(b.component_var || 0)) - Math.abs(Number(a.component_var || 0)));
+            const top = sorted[0] || {};
+            const share = Math.abs(Number(top.component_share_pct || 0));
+            const severity = share > 70 ? 'warning' : 'success';
+            return renderInterpretationPanel({
+                title: rows.length ? `Главный фактор риска: ${top.factor || 'Factor'}` : 'Факторы рассчитаны',
+                subtitle: `Portfolio VaR: ${safeNumber(data.portfolio_var, 4)}; сумма component VaR: ${safeNumber(data.sum_component_var, 4)}.`,
+                severity,
+                signals: [
+                    { label: 'Доля главного фактора', value: `${safeNumber(share, 2)}%`, text: share > 70 ? 'Риск сильно сконцентрирован в одном факторе.' : 'Риск распределён между факторами без экстремальной концентрации.' },
+                    { label: 'Sigma портфеля', value: safeNumber(data.portfolio_sigma, 4), text: 'Совокупная волатильность факторов с учетом covariance matrix.' },
+                    { label: 'Факторов', value: String(rows.length), text: 'Чем больше факторов, тем важнее следить за корреляциями и знаками component VaR.' },
+                ],
+                action: share > 70 ? 'Проверьте, можно ли снизить экспозицию к главному фактору или добавить компенсирующий фактор.' : 'Используйте таблицу ниже, чтобы объяснить, какие факторы дают основной вклад в VaR.',
+            });
+        };
+
+        const renderBondSwapInterpretation = (data) => {
+            const constructions = data.constructions || [];
+            const best = [...constructions].sort((a, b) => Math.abs(Number(a.net_pv || 0)) - Math.abs(Number(b.net_pv || 0)))[0] || {};
+            const warnings = data.warnings || [];
+            const severity = warnings.length ? 'warning' : 'success';
+            return renderInterpretationPanel({
+                title: warnings.length ? 'Bond & Swap рассчитан с предупреждениями' : 'Bond & Swap выглядит консистентно',
+                subtitle: `PV выпуска: ${fmtCurrency(Number(data.bond_pv?.coupon_plus_principal || 0))}.`,
+                severity,
+                signals: [
+                    { label: 'PV купонов', value: fmtCurrency(Number(data.bond_pv?.coupon_only || 0)), text: 'Текущая стоимость будущих купонов по заданной кривой.' },
+                    { label: 'Лучший hedge', value: best.name || '--', text: best.name ? `Net PV ближе всего к нулю: ${safeNumber(best.net_pv, 4)}.` : 'Hedge construction не построен.' },
+                    { label: 'Предупреждения', value: String(warnings.length), text: warnings.length ? 'Ниже есть замечания по входным данным или построению.' : 'Явных предупреждений по расчету нет.' },
+                ],
+                action: 'Сравните hedge ratios: чем ближе net PV к нулю и чем стабильнее сценарии, тем аккуратнее выбран swap-spread.',
+            });
+        };
+
+        const renderStressInterpretation = (data) => {
+            const scenarios = data.scenarios || [];
+            const worst = [...scenarios].sort((a, b) => Number(a.total_pnl || 0) - Number(b.total_pnl || 0))[0] || {};
+            const worstPnl = Number(worst.total_pnl || 0);
+            const baseValue = Number(worst.base_value || 0);
+            const lossPct = baseValue ? (worstPnl / Math.abs(baseValue)) * 100 : 0;
+            const severity = worstPnl < 0 ? (Math.abs(lossPct) > 15 ? 'danger' : 'warning') : 'success';
+            return renderInterpretationPanel({
+                title: worstPnl < 0 ? 'Стресс показывает потенциальный убыток' : 'Стресс не дал отрицательного PnL',
+                subtitle: `Худший сценарий: ${worst.name || 'scenario'}, PnL ${safeNumber(worstPnl, 4)}.`,
+                severity,
+                signals: [
+                    { label: 'Худший PnL', value: safeNumber(worstPnl, 4), text: worstPnl < 0 ? 'Главное число для stress-check: сколько теряется в выбранном сценарии.' : 'В выбранном сценарии позиция не убыточна.' },
+                    { label: 'Потеря к базе', value: `${safeNumber(lossPct, 2)}%`, text: 'Доля стрессового PnL относительно базовой стоимости позиции.' },
+                    { label: 'Позиции', value: String(worst.positions?.length || 0), text: 'Сколько позиций вошло в худший сценарий.' },
+                ],
+                action: worstPnl < 0 ? 'Сравните stress-loss с VaR/ES: stress обычно отвечает на вопрос “что будет, если рынок резко сломается”.' : 'Попробуйте более жесткий preset или кастомный shock, если нужно показать неблагоприятный сценарий.',
+            });
         };
 
         const toggleOptionSeedInput = () => {
@@ -2965,6 +3552,15 @@ GAZP,40</pre>
                 }
                 document.getElementById('op-spot').value = spot;
                 document.getElementById('ovar-op-spot').value = spot;
+                setSelectedAssetContext({
+                    source: 'MOEX instrument list',
+                    label: instrument.SECID || instrument.SHORTNAME || 'MOEX instrument',
+                    ticker: instrument.SECID || '',
+                    lastPrice: spot,
+                    multiplier: lot,
+                    prices: [],
+                    positionSize: 1,
+                });
             }
             document.getElementById('fp-multiplier').value = lot;
 
@@ -3045,6 +3641,17 @@ GAZP,40</pre>
             moexState.candles = candles;
             moexState.candleSecid = secid;
             moexState.historicalPrices = closes;
+            setSelectedAssetContext({
+                source: 'MOEX candles',
+                label: secid,
+                ticker: secid,
+                prices: closes,
+                lastPrice: lastClose,
+                muDaily: mu,
+                sigmaDaily: sigma,
+                multiplier: 1,
+                positionSize: 1,
+            });
 
             updateMoexCandleCards(lastClose, mu, sigma, closes.length);
             document.getElementById('fp-spot').value = lastClose;
@@ -3097,6 +3704,12 @@ GAZP,40</pre>
         document.getElementById('single-hedge-output').addEventListener('click', handleHedgeScenarioAction);
         document.getElementById('portfolio-hedge-output').addEventListener('click', handleHedgeScenarioAction);
         document.getElementById('single-hedge-output').addEventListener('click', handleHedgeBridgeAction);
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('button[data-context-action]');
+            if (!button) return;
+            event.preventDefault();
+            applyAssetContextAction(button.dataset.contextAction);
+        });
 
         // --- SINGLE ASSET ---
         document.querySelectorAll('#modeTabs button').forEach(btn => {
@@ -3219,6 +3832,19 @@ GAZP,40</pre>
                 lastSingleResult = data;
                 lastSingleReportMeta = null;
                 setReportReadyState('single', null);
+                const selectedLabel = document.getElementById('selectedInstrument').innerText.trim();
+                const contextLabel = selectedLabel || instrumentQuery || (currentMode === 'manual' ? 'Manual price series' : 'Random price series');
+                setSelectedAssetContext({
+                    source: currentMode === 'tinkoff' ? 'Tinkoff' : (currentMode === 'manual' ? 'Manual' : 'Random'),
+                    label: contextLabel,
+                    ticker: instrumentQuery || '',
+                    figi: document.getElementById('figi').value || '',
+                    prices: data.prices || [],
+                    pnlSeries: data.pnl_series || [],
+                    lastPrice: data.last_price,
+                    positionSize: payload.position_size,
+                    multiplier: 1,
+                });
 
                 document.getElementById('results').classList.remove('d-none');
                 document.getElementById('results-placeholder').classList.add('d-none');
@@ -3810,6 +4436,8 @@ GAZP,40</pre>
                     { label: 'Position Vega', value: safeNumber(data.vega * scale, 4) },
                     { label: 'Position Theta', value: safeNumber(data.theta * scale, 4) },
                 ]);
+                document.getElementById('option-interpretation-output').innerHTML =
+                    renderOptionPricingInterpretation(data, payload, scale);
                 setStatusStrip('option-context-output', 'Option priced successfully', 'Use the copy button to send the same contract into Option Risk.');
             } catch (e) {
                 setInlineFeedback('option-feedback', e.message, 'danger', 'Не удалось рассчитать цену и Greeks');
@@ -3865,6 +4493,8 @@ GAZP,40</pre>
                         { key: 'value', label: 'Value' },
                     ]
                 ) + renderRawDetails(data);
+                document.getElementById('forward-pricing-interpretation-output').innerHTML =
+                    renderForwardPricingInterpretation(data, payload);
                 setStatusStrip('forward-context-output', `Priced ${data.instrument_type}`, 'Use the same spot and size in the Linear Risk block below.');
             } catch (e) {
                 setInlineFeedback('forward-feedback', e.message, 'danger', 'Не удалось рассчитать pricing');
@@ -3878,6 +4508,9 @@ GAZP,40</pre>
                 const muRaw = getNumericValue('fpvar-mu');
                 const sigmaRaw = getNumericValue('fpvar-sigma');
                 const scenarioMoveRaw = getNumericValue('fpvar-scenario-move');
+                const contextPrices = selectedAssetContext?.prices?.length > 1
+                    ? selectedAssetContext.prices
+                    : moexState.historicalPrices;
                 const payload = {
                     instrument_type: document.getElementById('fp-type').value,
                     spot: getNumericValue('fp-spot'),
@@ -3888,7 +4521,7 @@ GAZP,40</pre>
                     mu_daily: Number.isNaN(muRaw) ? null : muRaw,
                     sigma_daily: Number.isNaN(sigmaRaw) ? null : sigmaRaw,
                     scenario_move_pct: Number.isNaN(scenarioMoveRaw) ? null : scenarioMoveRaw,
-                    historical_prices: moexState.historicalPrices.length > 1 ? moexState.historicalPrices : null,
+                    historical_prices: contextPrices.length > 1 ? contextPrices : null,
                 };
 
                 const data = await apiRequest('/api/linear_var', {
@@ -3933,6 +4566,8 @@ GAZP,40</pre>
                         { key: 'metric', label: 'Metric' },
                         { key: 'value', label: 'Value' },
                     ]) + renderRawDetails(data);
+                document.getElementById('forward-risk-interpretation-output').innerHTML =
+                    renderForwardRiskInterpretation(data, payload);
                 setStatusStrip('forward-context-output', 'Linear risk calculated', 'Parametric, historical and scenario risk are shown below for the same contract inputs.');
             } catch (e) {
                 setInlineFeedback('forward-feedback', e.message, 'danger', 'Не удалось рассчитать риск');
@@ -4020,6 +4655,8 @@ GAZP,40</pre>
                     { label: 'MC VaR', value: safeNumber(data.mc_var, 4) },
                     { label: 'Full Reval VaR', value: safeNumber(data.full_revaluation ? data.full_revaluation.var : null, 4) },
                 ]);
+                document.getElementById('ovar-interpretation-output').innerHTML =
+                    renderOptionRiskInterpretation(data, optionParams, deltaCash, gammaCash);
 
                 if (data.pnl_dg_mc && data.pnl_dg_mc.length > 0) {
                     const traces = [{
@@ -4115,18 +4752,20 @@ GAZP,40</pre>
                 const cc = data.conditional_coverage_test;
                 const pof = cc.pof;
                 const ind = cc.independence;
+                document.getElementById('backtest-interpretation-output').innerHTML =
+                    renderBacktestInterpretation(data, confidence, window);
                 document.getElementById('backtest-summary-output').innerHTML =
                     renderMetricCards([
-                        { label: 'Backtest Observations', value: String(data.rolling_history.realized_pnl.length) },
-                        { label: 'Exceptions', value: `${pof.exceptions} / ${pof.observations}` },
-                        { label: 'Expected Exceptions', value: safeNumber(pof.expected_exceptions, 2) },
-                        { label: 'Exception Rate', value: safeNumber(pof.exception_rate, 4) },
+                        { label: 'Наблюдения backtest', value: String(data.rolling_history.realized_pnl.length) },
+                        { label: 'Фактические пробои', value: `${pof.exceptions} / ${pof.observations}` },
+                        { label: 'Ожидаемые пробои', value: safeNumber(pof.expected_exceptions, 2) },
+                        { label: 'Частота пробоев', value: safeNumber(pof.exception_rate, 4) },
                     ]) + renderRawDetails(data.rolling_history);
                 document.getElementById('backtest-cc-output').innerHTML =
                     renderMetricCards([
-                        { label: 'POF Verdict', value: verdictLabel(pof.verdict) },
+                        { label: 'Итог POF', value: verdictLabel(pof.verdict) },
                         { label: 'POF p-value', value: safeNumber(pof.p_value, 4) },
-                        { label: 'Independence Verdict', value: verdictLabel(ind.verdict) },
+                        { label: 'Итог независимости', value: verdictLabel(ind.verdict) },
                         { label: 'CC p-value', value: safeNumber(cc.p_value, 4) },
                     ]) +
                     `<div class="mt-3 d-flex flex-wrap gap-2">
@@ -4137,10 +4776,10 @@ GAZP,40</pre>
                     renderRawDetails(data.conditional_coverage_test);
                 document.getElementById('backtest-es-output').innerHTML =
                     renderMetricCards([
-                        { label: 'Tail Events', value: safeNumber(data.es_diagnostics.tail_events, 0) },
-                        { label: 'Avg Realized Tail Loss', value: safeNumber(data.es_diagnostics.avg_realized_tail_loss, 4) },
-                        { label: 'Avg Predicted ES', value: safeNumber(data.es_diagnostics.avg_predicted_es, 4) },
-                        { label: 'Tail Loss Ratio', value: safeNumber(data.es_diagnostics.tail_loss_ratio, 4) },
+                        { label: 'Хвостовые события', value: safeNumber(data.es_diagnostics.tail_events, 0) },
+                        { label: 'Средний факт. хвостовой убыток', value: safeNumber(data.es_diagnostics.avg_realized_tail_loss, 4) },
+                        { label: 'Средний прогноз ES', value: safeNumber(data.es_diagnostics.avg_predicted_es, 4) },
+                        { label: 'Хвостовой коэффициент', value: safeNumber(data.es_diagnostics.tail_loss_ratio, 4) },
                     ]) + renderRawDetails(data.es_diagnostics);
 
             } catch (e) {
@@ -4200,6 +4839,8 @@ GAZP,40</pre>
                         ]
                     ) +
                     renderRawDetails(data);
+                document.getElementById('risk-attribution-interpretation-output').innerHTML =
+                    renderRiskAttributionInterpretation(data);
 
             } catch (e) {
                 setInlineFeedback('risk-attribution-feedback', e.message, 'danger', 'Не удалось разложить риск по факторам');
@@ -4285,6 +4926,7 @@ GAZP,40</pre>
                     body: JSON.stringify(payload)
                 }, 'Не удалось выполнить stress-check.');
 
+                document.getElementById('stress-interpretation-output').innerHTML = renderStressInterpretation(data);
                 document.getElementById('stress-test-output').innerHTML = buildStressResultTable(data);
             } catch (e) {
                 setInlineFeedback('stress-feedback', e.message, 'danger', 'Не удалось выполнить stress-check');
@@ -4339,6 +4981,7 @@ GAZP,40</pre>
                     body: JSON.stringify(payload)
                 }, 'Не удалось выполнить advanced stress test.');
 
+                document.getElementById('stress-interpretation-output').innerHTML = renderStressInterpretation(data);
                 document.getElementById('stress-test-output').innerHTML = buildStressResultTable(data);
             } catch (e) {
                 setInlineFeedback('stress-feedback', e.message, 'danger', 'Не удалось выполнить advanced stress test');
@@ -4369,6 +5012,7 @@ GAZP,40</pre>
             renderStressProPositions([defaultStressPosition()]);
             renderBondCurveRows(defaultBondCurveRows());
             renderBondScenarioRows(defaultBondScenarioRows());
+            renderAssetContext();
             applyExperienceMode(currentExperienceMode);
             applyWorkspaceSection(currentWorkspaceSection);
         };
