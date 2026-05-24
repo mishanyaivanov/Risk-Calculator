@@ -1547,12 +1547,12 @@ GAZP,40</pre>
                                     <div class="col-6">
                                         <label class="form-label small">Coupon Frequency</label>
                                         <select class="form-select form-select-sm" id="bs-frequency">
-                                            <option value="12">Monthly</option>
+                                            <option value="1">Monthly</option>
                                             <option value="6" selected>Every 6 months</option>
                                             <option value="3">Quarterly</option>
-                                            <option value="1">Annual</option>
+                                            <option value="12">Annual</option>
                                         </select>
-                                        <div class="field-help">Coupon frequency in months.</div>
+                                        <div class="field-help">Payment interval in months. For example, semiannual coupons use 6 months.</div>
                                     </div>
                                     <div class="col-6">
                                         <label class="form-label small">Valuation Date</label>
@@ -1563,6 +1563,7 @@ GAZP,40</pre>
                                 <div class="form-check mt-3">
                                     <input class="form-check-input" type="checkbox" id="bs-include-full-issue" checked>
                                     <label class="form-check-label small" for="bs-include-full-issue">Include a hedge for the full issue, not only coupon cash flows</label>
+                                    <div class="field-help">Useful as a stress comparison. A periodic floating leg usually cannot naturally offset principal repayment, so this variant can require an unusually large spread.</div>
                                 </div>
                             </div>
                         </div>
@@ -1591,7 +1592,7 @@ GAZP,40</pre>
                             <div class="card-body">
                                 <label class="form-label small">Ratios (comma-separated)</label>
                                 <input type="text" class="form-control form-control-sm" id="bs-hedge-ratios" value="1, 0.75, 0.5">
-                                <div class="field-help">Specify the share of coupon PV to hedge. By default, the screen evaluates 100%, 75%, and 50%.</div>
+                                <div class="field-help">Specify the share of coupon PV to offset with the floating overlay. By default, the screen evaluates 100%, 75%, and 50%.</div>
                                 <button type="button" class="btn btn-dark w-100 mt-3 btn-sm" id="runBondSwapBtn">Calculate Bond &amp; Swap</button>
                             </div>
                         </div>
@@ -1613,11 +1614,11 @@ GAZP,40</pre>
                                     <div class="result-card"><div class="label">Full PV</div><div class="value">--</div></div>
                                     <div class="result-card"><div class="label">Constructions</div><div class="value">--</div></div>
                                 </div>
-                                <h6>Hedge Constructions <button type="button" class="method-link ms-1" data-methodology-target="method-bond-swap">methodology</button></h6>
+                                <h6>1. Hedge options <button type="button" class="method-link ms-1" data-methodology-target="method-bond-swap">methodology</button></h6>
                                 <div id="bond-swap-constructions-output"><p class="soft-note">No data yet.</p></div>
-                                <h6 class="mt-3">1Y-Rate Scenarios</h6>
+                                <h6 class="mt-3">2. Scenario impact</h6>
                                 <div id="bond-swap-scenarios-output"><p class="soft-note">No data yet.</p></div>
-                                <h6 class="mt-3">Bond Cashflows</h6>
+                                <h6 class="mt-3">3. Cashflow schedule</h6>
                                 <div id="bond-swap-cashflows-output"><p class="soft-note">No data yet.</p></div>
                                 <h6 class="mt-3">Warnings</h6>
                                 <div id="bond-swap-warnings-output"><p class="soft-note">No warnings yet.</p></div>
@@ -2409,24 +2410,35 @@ GAZP,40</pre>
             document.getElementById('bond-swap-interpretation-output').innerHTML =
                 renderBondSwapInterpretation(data);
 
-            document.getElementById('bond-swap-constructions-output').innerHTML = renderSimpleTable(
+            const constructionsTable = renderSimpleTable(
                 (data.constructions || []).map((row) => ({
                     name: row.name,
+                    target_type: row.target_type === 'coupon_plus_principal' ? 'coupon + principal' : 'coupon only',
                     hedge_ratio: safeNumber(row.hedge_ratio, 2),
                     fair_spread_bps: safeNumber(row.fair_spread_bps, 4),
                     target_pv: safeNumber(row.target_pv, 4),
                     swap_pv: safeNumber(row.swap_pv, 4),
                     net_pv: safeNumber(row.net_pv, 4),
+                    scenario_sensitivity: safeNumber(maxScenarioAbsDelta(row), 4),
                 })),
                 [
                     { key: 'name', label: 'Construction' },
+                    { key: 'target_type', label: 'Target' },
                     { key: 'hedge_ratio', label: 'Hedge Ratio' },
                     { key: 'fair_spread_bps', label: 'Fair Spread (bps)' },
                     { key: 'target_pv', label: 'Target PV' },
                     { key: 'swap_pv', label: 'Swap PV' },
                     { key: 'net_pv', label: 'Net PV' },
+                    { key: 'scenario_sensitivity', label: 'Scenario Sensitivity' },
                 ]
             );
+            document.getElementById('bond-swap-constructions-output').innerHTML = `
+                <div class="theory-card mb-3">
+                    <strong>How to read this table</strong>
+                    Start here. Fair Spread is the spread needed to make the overlay PV-neutral today. Net PV should be close to zero by construction. For comparison, use Scenario Sensitivity: lower means the overlay is less unstable across the rate scenarios below.
+                </div>
+                ${constructionsTable}
+            `;
 
             const scenarioRows = (data.constructions || []).flatMap((construction) =>
                 (construction.scenarios || []).map((scenario) => ({
@@ -2438,7 +2450,7 @@ GAZP,40</pre>
                     delta_vs_base_remaining_pv: safeNumber(scenario.delta_vs_base_remaining_pv, 4),
                 }))
             );
-            document.getElementById('bond-swap-scenarios-output').innerHTML = renderSimpleTable(
+            const scenariosTable = renderSimpleTable(
                 scenarioRows,
                 [
                     { key: 'construction', label: 'Construction' },
@@ -2449,8 +2461,12 @@ GAZP,40</pre>
                     { key: 'delta_vs_base_remaining_pv', label: 'Delta vs Base' },
                 ]
             );
+            document.getElementById('bond-swap-scenarios-output').innerHTML = `
+                <p class="soft-note mb-2">This table answers: if the 1Y rate changes, how much does the remaining package move versus the base case?</p>
+                ${scenariosTable}
+            `;
 
-            document.getElementById('bond-swap-cashflows-output').innerHTML = renderSimpleTable(
+            const cashflowsTable = renderSimpleTable(
                 (data.cashflows || []).map((row) => ({
                     payment_date: row.payment_date,
                     accrual_years: safeNumber(row.accrual_years, 4),
@@ -2466,6 +2482,12 @@ GAZP,40</pre>
                     { key: 'total_cashflow', label: 'Total' },
                 ]
             );
+            document.getElementById('bond-swap-cashflows-output').innerHTML = `
+                <details>
+                    <summary class="soft-note">Show the technical cashflow schedule</summary>
+                    <div class="mt-2">${cashflowsTable}</div>
+                </details>
+            `;
 
             const warnings = data.warnings || [];
             document.getElementById('bond-swap-warnings-output').innerHTML = warnings.length
@@ -2488,19 +2510,11 @@ GAZP,40</pre>
             selectedInstrument: null,
         };
 
-        const readStoredAssetContext = () => {
-            try {
-                const parsed = JSON.parse(localStorage.getItem('risk-selected-asset-context') || 'null');
-                return parsed && typeof parsed === 'object' ? parsed : null;
-            } catch (_error) {
-                return null;
-            }
-        };
-
         let portfolioItems = [];
         let currentMode = 'tinkoff';
         let currentExperienceMode = localStorage.getItem('risk-ui-mode') || 'novice';
-        let selectedAssetContext = readStoredAssetContext();
+        localStorage.removeItem('risk-selected-asset-context');
+        let selectedAssetContext = null;
         let lastSingleCalculation = null;
         let lastSingleResult = null;
         let lastPortfolioCalculation = null;
@@ -2704,7 +2718,6 @@ GAZP,40</pre>
                 sigmaDaily: Number.isFinite(Number(context.sigmaDaily)) ? Number(context.sigmaDaily) : derived.sigmaDaily,
                 updatedAt: new Date().toISOString(),
             };
-            localStorage.setItem('risk-selected-asset-context', JSON.stringify(selectedAssetContext));
             renderAssetContext();
         };
 
@@ -3422,21 +3435,31 @@ GAZP,40</pre>
             });
         };
 
+        const maxScenarioAbsDelta = (construction) => {
+            const deltas = (construction?.scenarios || [])
+                .map(item => Math.abs(Number(item.delta_vs_base_remaining_pv)))
+                .filter(value => Number.isFinite(value));
+            return deltas.length ? Math.max(...deltas) : null;
+        };
+
         const renderBondSwapInterpretation = (data) => {
             const constructions = data.constructions || [];
-            const best = [...constructions].sort((a, b) => Math.abs(Number(a.net_pv || 0)) - Math.abs(Number(b.net_pv || 0)))[0] || {};
+            const couponConstructions = constructions.filter(item => item.target_type === 'coupon_only');
+            const mostStable = [...(couponConstructions.length ? couponConstructions : constructions)]
+                .sort((a, b) => (maxScenarioAbsDelta(a) ?? Number.POSITIVE_INFINITY) - (maxScenarioAbsDelta(b) ?? Number.POSITIVE_INFINITY))[0] || {};
+            const fullIssue = constructions.find(item => item.target_type === 'coupon_plus_principal');
             const warnings = data.warnings || [];
             const severity = warnings.length ? 'warning' : 'success';
             return renderInterpretationPanel({
-                title: warnings.length ? 'Bond & Swap calculated with warnings' : 'Bond & Swap looks consistent',
-                subtitle: `Issue PV: ${fmtCurrency(Number(data.bond_pv?.coupon_plus_principal || 0))}.`,
+                title: warnings.length ? 'The overlay is calibrated, but one variant looks unrealistic' : 'The overlay is calibrated',
+                subtitle: `The bond cash flows are worth ${fmtCurrency(Number(data.bond_pv?.coupon_plus_principal || 0))} today; coupons alone are worth ${fmtCurrency(Number(data.bond_pv?.coupon_only || 0))}.`,
                 severity,
                 signals: [
-                    { label: 'Coupon PV', value: fmtCurrency(Number(data.bond_pv?.coupon_only || 0)), text: 'Present value of future coupon cash flows on the selected curve.' },
-                    { label: 'Best hedge', value: best.name || '--', text: best.name ? `Net PV is closest to zero: ${safeNumber(best.net_pv, 4)}.` : 'No hedge construction was built.' },
-                    { label: 'Warnings', value: String(warnings.length), text: warnings.length ? 'See the notes below for input or construction issues.' : 'No explicit calculation warnings were raised.' },
+                    { label: 'What the model does', value: 'PV-neutral overlay', text: 'It chooses a floating-leg spread so the overlay offsets the selected bond cash-flow PV today.' },
+                    { label: 'Easiest variant to discuss', value: mostStable.name || '--', text: mostStable.name ? `Among coupon-only overlays, this one has the lowest scenario sensitivity: ${safeNumber(maxScenarioAbsDelta(mostStable), 4)}.` : 'No coupon-only overlay was built.' },
+                    { label: 'Watch out', value: fullIssue ? safeNumber(fullIssue.fair_spread_bps, 2) + ' bps' : '--', text: fullIssue ? 'The full-issue hedge tries to offset principal too. If its spread is huge, treat it as a warning example, not the practical choice.' : 'Only coupon-PV overlays were requested.' },
                 ],
-                action: 'Compare hedge ratios: the closer net PV is to zero and the more stable the scenarios are, the more balanced the chosen swap spread is.',
+                action: 'Read the screen from top to bottom: first choose a coupon overlay, then check scenario sensitivity, and only open cashflows if you need to explain how the PV was built.',
             });
         };
 
