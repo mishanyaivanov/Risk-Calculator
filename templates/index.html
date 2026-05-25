@@ -3599,13 +3599,6 @@ GAZP,40</pre>
             });
         };
 
-        const maxScenarioAbsDelta = (construction) => {
-            const deltas = (construction?.scenarios || [])
-                .map(item => Math.abs(Number(item.delta_vs_base_remaining_pv)))
-                .filter(value => Number.isFinite(value));
-            return deltas.length ? Math.max(...deltas) : null;
-        };
-
         const toggleOptionSeedInput = () => {
             const useFixedSeed = document.getElementById('ovar-use-fixed-seed').checked;
             const seedInput = document.getElementById('ovar-seed');
