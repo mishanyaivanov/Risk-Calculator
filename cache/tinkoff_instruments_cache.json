@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-05-24T17:45:44+00:00",
+  "updated_at": "2026-05-25T08:09:58+00:00",
   "item_count": 3807,
   "items": [
     {
@@ -12273,12 +12273,6 @@
       "type": "bonds"
     },
     {
-      "ticker": "RU000A106AH6",
-      "figi": "RU000A106AH6",
-      "name": "О'КЕЙ БО 001Р-05",
-      "type": "bonds"
-    },
-    {
       "ticker": "RU000A106AT1",
       "figi": "TCS00A106AT1",
       "name": "Газпром капитал БО-001Р-06",
@@ -12466,7 +12460,7 @@
     },
     {
       "ticker": "RU000A106JC8",
-      "figi": "TCS99A106JC8",
+      "figi": "TCS00A106JC8",
       "name": "Роял Капитал БО-П09",
       "type": "bonds"
     },
@@ -13030,7 +13024,7 @@
     },
     {
       "ticker": "RU000A1079H9",
-      "figi": "TCS99A1079H9",
+      "figi": "TCS30A1079H9",
       "name": "Роял Капитал БО-П10",
       "type": "bonds"
     },
@@ -15826,7 +15820,7 @@
     },
     {
       "ticker": "RU000A10BB83",
-      "figi": "TCS00A10BB83",
+      "figi": "TCS30A10BB83",
       "name": "Роял Капитал БО-02",
       "type": "bonds"
     },
@@ -19008,6 +19002,12 @@
       "ticker": "RU000A10F7L0",
       "figi": "TCS00A10F7L0",
       "name": "Атомэнергопром 001P-12",
+      "type": "bonds"
+    },
+    {
+      "ticker": "RU000A10F7V9",
+      "figi": "TCS00A10F7V9",
+      "name": "Полипласт П02-БО-16",
       "type": "bonds"
     },
     {

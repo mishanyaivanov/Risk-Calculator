@@ -38,6 +38,24 @@
             color: #ffffff;
         }
         .chart-container { width: 100%; height: 400px; }
+        .chart-shell {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e3ebf3;
+            border-radius: 0.85rem;
+            padding: 0.75rem;
+        }
+        .chart-caption {
+            color: #6c757d;
+            font-size: 0.83rem;
+            line-height: 1.35;
+            margin-top: 0.65rem;
+        }
+        .report-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
 
         .nav-pills .nav-link.active { background-color: #34495e; }
         .nav-pills .nav-link { color: #34495e; font-weight: 500; }
@@ -697,7 +715,7 @@
                             <div id="single-risk-status" class="mb-3"></div>
                             <div id="single-copilot-output" class="mb-3"></div>
                             <div id="single-hedge-output" class="mb-3"></div>
-                            <div class="quick-actions mb-3">
+                            <div class="report-actions mb-3">
                                 <button type="button" class="btn btn-outline-dark btn-sm" id="create-single-report-btn">Create PDF Report</button>
                                 <a class="btn btn-dark btn-sm d-none" id="download-single-report-btn" href="#" download>Download PDF</a>
                             </div>
@@ -706,7 +724,10 @@
                             <div class="card">
                                 <div class="card-header">Price History</div>
                                 <div class="card-body p-2">
-                                    <div id="chartContainer" class="chart-container"></div>
+                                    <div class="chart-shell">
+                                        <div id="chartContainer" class="chart-container"></div>
+                                        <div class="chart-caption">The chart shows the exact price path used in the single-asset risk calculation.</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -808,7 +829,7 @@ GAZP,40</pre>
                             <div id="portfolio-risk-status" class="mb-3"></div>
                             <div id="portfolio-copilot-output" class="mb-3"></div>
                             <div id="portfolio-hedge-output" class="mb-3"></div>
-                            <div class="quick-actions mb-3">
+                            <div class="report-actions mb-3">
                                 <button type="button" class="btn btn-outline-dark btn-sm" id="create-portfolio-report-btn">Create PDF Report</button>
                                 <a class="btn btn-dark btn-sm d-none" id="download-portfolio-report-btn" href="#" download>Download PDF</a>
                             </div>
@@ -818,7 +839,7 @@ GAZP,40</pre>
                                 <div class="col-md-6">
                                     <div class="card bg-dark text-white h-100">
                                         <div class="card-body text-center">
-                                            <div class="metric-label text-white-50">Loss in a Bad Day</div>
+                                            <div class="metric-label text-white-50">Loss in a Bad Day (% of Capital)</div>
                                             <button type="button" class="method-link on-dark" data-methodology-target="method-portfolio-var">Methodology</button>
                                             <div class="metric-value text-white" id="port-var-val">--</div>
                                             <div class="small text-white-50 mt-2">Annualized volatility: <span id="port-vol">--</span>%</div>
@@ -840,7 +861,10 @@ GAZP,40</pre>
                             <div class="card mb-3">
                                 <div class="card-header">Efficient Frontier</div>
                                 <div class="card-body p-2">
-                                    <div id="frontier-chart" class="chart-container"></div>
+                                    <div class="chart-shell">
+                                        <div id="frontier-chart" class="chart-container"></div>
+                                        <div class="chart-caption">The highlighted point marks the current portfolio against the simulated efficient frontier.</div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -848,7 +872,10 @@ GAZP,40</pre>
                             <div class="card mb-3">
                                 <div class="card-header">Cumulative Return</div>
                                 <div class="card-body p-2">
-                                    <div id="cumulative-chart" class="chart-container"></div>
+                                    <div class="chart-shell">
+                                        <div id="cumulative-chart" class="chart-container"></div>
+                                        <div class="chart-caption">This chart is normalized to a starting capital of 1.00, so all paths are directly comparable.</div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -856,7 +883,10 @@ GAZP,40</pre>
                             <div class="card">
                                 <div class="card-header">Correlation Matrix</div>
                                 <div class="card-body p-2">
-                                    <div id="correlation-matrix" style="height: 350px;"></div>
+                                    <div class="chart-shell">
+                                        <div id="correlation-matrix" style="height: 350px;"></div>
+                                        <div class="chart-caption">Correlation values close to 1.00 indicate assets that tend to move together, which weakens diversification.</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1389,6 +1419,11 @@ GAZP,40</pre>
                                 <p class="soft-note">Monte Carlo means simulating many possible market outcomes and observing how position PnL changes. This is more visual and closer to reality than a single formula.</p>
                                 <div id="ovar-mc-chart" class="chart-container mb-3"></div>
                                 <div id="ovar-mc-output"><p class="soft-note mb-0">No MC data.</p></div>
+                                <div class="report-actions mt-3 mb-2">
+                                    <button type="button" class="btn btn-outline-dark btn-sm" id="create-option-risk-report-btn">Create PDF Report</button>
+                                    <a class="btn btn-dark btn-sm d-none" id="download-option-risk-report-btn" href="#" download>Download PDF</a>
+                                </div>
+                                <div class="soft-note mb-3 d-none" id="option-risk-report-status"></div>
                                 <div class="split-section" id="ovar-full-output">
                                     <p class="soft-note mb-0">Full revaluation metrics will appear here when enabled.</p>
                                 </div>
@@ -1756,6 +1791,10 @@ GAZP,40</pre>
                             <div class="card-body">
                                 <div id="stress-interpretation-output" class="mb-3">
                                     <p class="soft-note mb-0">A short stress interpretation will appear here after the calculation.</p>
+                                </div>
+                                <div class="chart-shell mb-3">
+                                    <div id="stress-ranking-chart" class="chart-container chart-sm"></div>
+                                    <div class="chart-caption">Scenarios are ranked by total PnL so the most adverse outcome is visible immediately.</div>
                                 </div>
                                 <h6>Stress Test Scenarios</h6>
                                 <div id="stress-test-output"><p class="soft-note">No data yet.</p></div>
@@ -2519,8 +2558,11 @@ GAZP,40</pre>
         let lastSingleResult = null;
         let lastPortfolioCalculation = null;
         let lastPortfolioResult = null;
+        let lastOptionRiskCalculation = null;
+        let lastOptionRiskResult = null;
         let lastSingleReportMeta = null;
         let lastPortfolioReportMeta = null;
+        let lastOptionRiskReportMeta = null;
 
         const setInlineFeedback = (id, message, type = 'danger', title = 'Something went wrong') => {
             const node = document.getElementById(id);
@@ -2619,6 +2661,81 @@ GAZP,40</pre>
             allocation: await capturePlotAsDataUrl('allocation-chart', { width: 800, height: 600 }),
         });
 
+        const buildOptionRiskReportCharts = async () => ({
+            mc_distribution: await capturePlotAsDataUrl('ovar-mc-chart', { width: 1200, height: 700 }),
+        });
+
+        const basePlotLayout = (extra = {}) => {
+            const xaxis = {
+                gridcolor: '#e8eef5',
+                zerolinecolor: '#d9e2ec',
+                linecolor: '#d9e2ec',
+                tickfont: { color: '#4b5b6b' },
+                titlefont: { color: '#1f3a52' },
+                ...(extra.xaxis || {}),
+            };
+            const yaxis = {
+                gridcolor: '#e8eef5',
+                zerolinecolor: '#d9e2ec',
+                linecolor: '#d9e2ec',
+                tickfont: { color: '#4b5b6b' },
+                titlefont: { color: '#1f3a52' },
+                ...(extra.yaxis || {}),
+            };
+            const legend = {
+                orientation: 'h',
+                yanchor: 'bottom',
+                y: 1.02,
+                xanchor: 'left',
+                x: 0,
+                bgcolor: 'rgba(255,255,255,0.85)',
+                ...(extra.legend || {}),
+            };
+            return {
+                paper_bgcolor: '#ffffff',
+                plot_bgcolor: '#fbfdff',
+                font: { family: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', color: '#243746' },
+                margin: { l: 56, r: 24, t: 36, b: 52 },
+                ...extra,
+                legend,
+                xaxis,
+                yaxis,
+            };
+        };
+
+        const basePlotConfig = {
+            responsive: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
+        };
+
+        const renderStressRankingChart = (data) => {
+            const scenarios = Array.isArray(data?.scenarios) ? [...data.scenarios] : [];
+            if (!scenarios.length) {
+                Plotly.purge('stress-ranking-chart');
+                document.getElementById('stress-ranking-chart').innerHTML = '<p class="text-muted text-center mt-3">No stress chart data available.</p>';
+                return;
+            }
+
+            scenarios.sort((a, b) => Number(a.total_pnl || 0) - Number(b.total_pnl || 0));
+            Plotly.newPlot('stress-ranking-chart', [{
+                x: scenarios.map(item => item.total_pnl),
+                y: scenarios.map(item => item.name),
+                type: 'bar',
+                orientation: 'h',
+                marker: {
+                    color: scenarios.map(item => Number(item.total_pnl || 0) < 0 ? '#b94a48' : '#2f7d5a'),
+                },
+                hovertemplate: '<b>%{y}</b><br>PnL: %{x:.4f}<extra></extra>',
+            }], basePlotLayout({
+                title: { text: 'Stress Scenario Ranking', font: { size: 15, color: '#1f3a52' } },
+                margin: { l: 160, r: 24, t: 44, b: 40 },
+                xaxis: { title: 'Total PnL', gridcolor: '#e8eef5', zerolinecolor: '#cfd8e3' },
+                yaxis: { automargin: true },
+                showlegend: false,
+            }), basePlotConfig);
+        };
+
         const setStatusStrip = (id, title, body) => {
             const node = document.getElementById(id);
             if (!node) return;
@@ -2692,7 +2809,6 @@ GAZP,40</pre>
         const setSelectedAssetContext = (context) => {
             if (!context) {
                 selectedAssetContext = null;
-                localStorage.removeItem('risk-selected-asset-context');
                 renderAssetContext();
                 return;
             }
@@ -3457,7 +3573,7 @@ GAZP,40</pre>
                 signals: [
                     { label: 'What the model does', value: 'PV-neutral overlay', text: 'It chooses a floating-leg spread so the overlay offsets the selected bond cash-flow PV today.' },
                     { label: 'Easiest variant to discuss', value: mostStable.name || '--', text: mostStable.name ? `Among coupon-only overlays, this one has the lowest scenario sensitivity: ${safeNumber(maxScenarioAbsDelta(mostStable), 4)}.` : 'No coupon-only overlay was built.' },
-                    { label: 'Watch out', value: fullIssue ? safeNumber(fullIssue.fair_spread_bps, 2) + ' bps' : '--', text: fullIssue ? 'The full-issue hedge tries to offset principal too. If its spread is huge, treat it as a warning example, not the practical choice.' : 'Only coupon-PV overlays were requested.' },
+                    { label: 'Watch out', value: fullIssue ? `${safeNumber(fullIssue.fair_spread_bps, 2)} bps` : '--', text: fullIssue ? 'The full-issue hedge tries to offset principal too. If its spread is huge, treat it as a warning example, not the practical choice.' : 'Only coupon-PV overlays were requested.' },
                 ],
                 action: 'Read the screen from top to bottom: first choose a coupon overlay, then check scenario sensitivity, and only open cashflows if you need to explain how the PV was built.',
             });
@@ -3481,6 +3597,13 @@ GAZP,40</pre>
                 ],
                 action: worstPnl < 0 ? 'Compare the stress loss with VaR and ES: stress is usually the answer to “what happens if the market breaks sharply?”.' : 'Try a harsher preset or a custom shock if you need to demonstrate an adverse scenario.',
             });
+        };
+
+        const maxScenarioAbsDelta = (construction) => {
+            const deltas = (construction?.scenarios || [])
+                .map(item => Math.abs(Number(item.delta_vs_base_remaining_pv)))
+                .filter(value => Number.isFinite(value));
+            return deltas.length ? Math.max(...deltas) : null;
         };
 
         const toggleOptionSeedInput = () => {
@@ -4092,7 +4215,7 @@ GAZP,40</pre>
                     start_date: document.getElementById('port-start').value,
                     end_date: document.getElementById('port-end').value,
                     confidence: getPortfolioConfidence(),
-                    portfolio_value: 100000
+                    portfolio_value: 1
                 };
                 const data = await apiRequest('/api/calculate_portfolio', {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
@@ -4109,9 +4232,9 @@ GAZP,40</pre>
                 document.getElementById('portfolio-copilot-output').innerHTML = renderCopilotBox(data.portfolio_copilot);
                 document.getElementById('portfolio-hedge-output').innerHTML = renderHedgeConstructor(data.portfolio_hedge_constructor, 'portfolio');
 
-                document.getElementById('port-var-val').innerText = fmtCurrency(data.portfolio_metrics.var_value);
+                document.getElementById('port-var-val').innerText = `${safeNumber((data.portfolio_metrics.var_value || 0) * 100, 2)}%`;
                 document.getElementById('port-vol').innerText = (data.portfolio_metrics.annual_volatility * 100).toFixed(2);
-                document.getElementById('port-return').innerText = fmtCurrency(data.portfolio_metrics.annual_return);
+                document.getElementById('port-return').innerText = `${safeNumber((data.portfolio_metrics.annual_return || 0) * 100, 2)}%`;
 
                 // 1. Correlation Matrix
                 const corr = data.correlation_matrix;
@@ -4121,10 +4244,11 @@ GAZP,40</pre>
                 Plotly.newPlot('correlation-matrix', [{
                     z: z, x: labels, y: labels, type: 'heatmap', colorscale: 'RdBu', zmin: -1, zmax: 1,
                     text: z.map(row => row.map(val => val.toFixed(2))), texttemplate: "%{text}", hoverinfo: 'z'
-                }], {
-                    margin: {l: 50, r: 50, t: 20, b: 50},
+                }], basePlotLayout({
+                    title: { text: 'Correlation Matrix', font: { size: 15, color: '#1f3a52' } },
+                    margin: {l: 60, r: 40, t: 44, b: 48},
                     yaxis: {autorange: 'reversed'},
-                }, {responsive: true});
+                }), basePlotConfig);
 
                 // 2. Efficient Frontier
                 const ef = data.efficient_frontier;
@@ -4134,20 +4258,26 @@ GAZP,40</pre>
                 Plotly.newPlot('frontier-chart', [
                     {
                         x: ef.volatility, y: ef.returns, mode: 'markers', type: 'scatter',
-                        marker: {color: ef.sharpe, colorscale: 'Viridis', size: 5, opacity: 0.6},
+                        marker: {
+                            color: ef.sharpe,
+                            colorscale: [[0, '#d7e6f5'], [0.5, '#7aa5cf'], [1, '#1f4f78']],
+                            size: 6,
+                            opacity: 0.72,
+                            colorbar: { title: 'Sharpe', thickness: 10 }
+                        },
                         name: 'Simulated Portfolios'
                     },
                     {
                         x: [currentVol], y: [currentRet], mode: 'markers', type: 'scatter',
-                        marker: {color: 'red', size: 12, symbol: 'star'},
+                        marker: {color: '#b94a48', size: 13, symbol: 'star'},
                         name: 'Current Portfolio'
                     }
-                ], {
+                ], basePlotLayout({
+                    title: { text: 'Efficient Frontier', font: { size: 15, color: '#1f3a52' } },
                     xaxis: {title: 'Annual Volatility (Risk)'},
                     yaxis: {title: 'Annual Return'},
-                    margin: {l: 50, r: 20, t: 20, b: 40},
                     showlegend: true
-                }, {responsive: true});
+                }), basePlotConfig);
 
                 // 3. Cumulative Returns
                 const dates = data.dates;
@@ -4164,21 +4294,27 @@ GAZP,40</pre>
                         mode: 'lines', name: key, line: {width: 1}, opacity: 0.5
                     });
                 }
-                Plotly.newPlot('cumulative-chart', traces, {
-                    margin: {l: 40, r: 20, t: 20, b: 40},
-                    yaxis: {title: 'Growth of 1 RUB'},
+                Plotly.newPlot('cumulative-chart', traces, basePlotLayout({
+                    title: { text: 'Normalized Growth Path', font: { size: 15, color: '#1f3a52' } },
+                    yaxis: {title: 'Growth of 1.00 Initial Capital'},
                     showlegend: true
-                }, {responsive: true});
+                }), basePlotConfig);
 
                 // 4. Allocation Pie Chart
                 Plotly.newPlot('allocation-chart', [{
                     values: portfolioItems.map(i => i.weight),
                     labels: portfolioItems.map(i => i.ticker),
-                    type: 'pie', hole: 0.4
+                    type: 'pie',
+                    hole: 0.45,
+                    sort: false,
+                    marker: { line: { color: '#ffffff', width: 2 } },
+                    textinfo: 'label+percent',
+                    hovertemplate: '<b>%{label}</b><br>Weight: %{percent}<extra></extra>',
                 }], {
+                    paper_bgcolor: '#ffffff',
                     margin: {l: 20, r: 20, t: 20, b: 20},
                     showlegend: false
-                }, {responsive: true});
+                }, basePlotConfig);
 
             } catch (e) {
                 lastPortfolioCalculation = null;
@@ -4187,6 +4323,10 @@ GAZP,40</pre>
                 setReportReadyState('portfolio', null);
                 document.getElementById('portfolio-copilot-output').innerHTML = '';
                 document.getElementById('portfolio-hedge-output').innerHTML = '';
+                Plotly.purge('frontier-chart');
+                Plotly.purge('cumulative-chart');
+                Plotly.purge('correlation-matrix');
+                Plotly.purge('allocation-chart');
                 setInlineFeedback('portfolio-feedback', e.message, 'danger', 'Portfolio calculation failed');
             } finally { hideLoading(); }
         });
@@ -4226,6 +4366,43 @@ GAZP,40</pre>
             }
             event.currentTarget.href = lastPortfolioReportMeta.download_url;
             event.currentTarget.download = lastPortfolioReportMeta.filename || 'portfolio-risk-report.pdf';
+        });
+
+        document.getElementById('create-option-risk-report-btn').addEventListener('click', async () => {
+            if (!lastOptionRiskCalculation || !lastOptionRiskResult) {
+                setInlineFeedback('option-var-feedback', 'Run Option Risk first, then create the report.', 'warning', 'No report data');
+                return;
+            }
+
+            showLoading();
+            try {
+                clearInlineFeedback('option-var-feedback');
+                const chartImages = await buildOptionRiskReportCharts();
+                const meta = await apiRequest('/api/report/option-risk/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ calculation: lastOptionRiskCalculation, result: lastOptionRiskResult, chart_images: chartImages })
+                }, 'Failed to create the PDF report.');
+                lastOptionRiskReportMeta = meta;
+                setReportReadyState('option-risk', meta);
+                setInlineFeedback('option-var-feedback', meta.message || 'The report has been created.', 'success', 'Report ready');
+            } catch (e) {
+                lastOptionRiskReportMeta = null;
+                setReportReadyState('option-risk', null);
+                setInlineFeedback('option-var-feedback', e.message, 'danger', 'Report creation failed');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        document.getElementById('download-option-risk-report-btn').addEventListener('click', (event) => {
+            if (!lastOptionRiskReportMeta?.download_url) {
+                event.preventDefault();
+                setInlineFeedback('option-var-feedback', 'Create the report first.', 'warning', 'No report ready');
+                return;
+            }
+            event.currentTarget.href = lastOptionRiskReportMeta.download_url;
+            event.currentTarget.download = lastOptionRiskReportMeta.filename || 'option-risk-report.pdf';
         });
 
         // --- MOEX DATA ---
@@ -4664,6 +4841,10 @@ GAZP,40</pre>
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 }, 'Could not calculate Option VaR.');
+                lastOptionRiskCalculation = payload;
+                lastOptionRiskResult = data;
+                lastOptionRiskReportMeta = null;
+                setReportReadyState('option-risk', null);
 
                 document.getElementById('ovar-res-dn-var').innerText = fmtNumber(data.approximations.var_dn);
                 document.getElementById('ovar-res-dn-mu').innerText = fmtNumber(data.approximations.mu_dn);
@@ -4698,13 +4879,12 @@ GAZP,40</pre>
                             marker: { color: 'rgba(52, 73, 94, 0.65)' }
                         });
                     }
-                    Plotly.newPlot('ovar-mc-chart', traces, {
+                    Plotly.newPlot('ovar-mc-chart', traces, basePlotLayout({
                         barmode: 'overlay',
-                        title: 'Option PnL Distribution',
+                        title: { text: 'Option PnL Distribution', font: { size: 15, color: '#1f3a52' } },
                         xaxis: { title: 'PnL' },
                         yaxis: { title: 'Frequency' },
-                        margin: {l: 40, r: 20, t: 40, b: 40},
-                    }, {responsive: true});
+                    }), basePlotConfig);
                 } else {
                     Plotly.purge('ovar-mc-chart');
                     document.getElementById('ovar-mc-chart').innerHTML = '<p class="text-muted text-center mt-3">No MC chart data available.</p>';
@@ -4742,6 +4922,10 @@ GAZP,40</pre>
                     : `Random seed ${data.seed_used} was used, so the next Monte Carlo run should differ.`;
                 setStatusStrip('option-risk-context-output', 'Option risk calculated', seedText);
             } catch (e) {
+                lastOptionRiskCalculation = null;
+                lastOptionRiskResult = null;
+                lastOptionRiskReportMeta = null;
+                setReportReadyState('option-risk', null);
                 setInlineFeedback('option-var-feedback', e.message, 'danger', 'Option Risk calculation failed');
             } finally { hideLoading(); }
         });
@@ -4951,6 +5135,7 @@ GAZP,40</pre>
 
                 document.getElementById('stress-interpretation-output').innerHTML = renderStressInterpretation(data);
                 document.getElementById('stress-test-output').innerHTML = buildStressResultTable(data);
+                renderStressRankingChart(data);
             } catch (e) {
                 setInlineFeedback('stress-feedback', e.message, 'danger', 'Stress check failed');
             } finally { hideLoading(); }
@@ -5006,6 +5191,7 @@ GAZP,40</pre>
 
                 document.getElementById('stress-interpretation-output').innerHTML = renderStressInterpretation(data);
                 document.getElementById('stress-test-output').innerHTML = buildStressResultTable(data);
+                renderStressRankingChart(data);
             } catch (e) {
                 setInlineFeedback('stress-feedback', e.message, 'danger', 'Advanced stress test failed');
             } finally { hideLoading(); }

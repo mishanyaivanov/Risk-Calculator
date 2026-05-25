@@ -232,9 +232,9 @@ def _portfolio_summary(calculation: dict[str, Any], result: dict[str, Any]) -> l
     port_value = float(calculation.get("portfolio_value", 0.0) or 0.0)
     share = (pvar / port_value * 100.0) if port_value > 1e-12 else 0.0
     return [
-        f"Estimated portfolio VaR is {_fmt_currency(pvar)}, or {_fmt_percent(share)} of the portfolio value.",
+        f"Estimated portfolio VaR is {_fmt_percent(share)} of normalized capital, equivalent to {_fmt_number(pvar, 4)} on a base of 1.00.",
         f"Annualized volatility is {_fmt_percent(vol, multiply_100=True)} and annualized return is {_fmt_percent(ret, multiply_100=True)}.",
-        "The correlation block and history charts below help explain concentration and diversification quality.",
+        "The correlation, frontier, allocation, and history blocks below help explain concentration and diversification quality.",
     ]
 
 
@@ -258,6 +258,21 @@ def _portfolio_interpretation_summary(calculation: dict[str, Any], result: dict[
     if share < 6.0:
         return "The portfolio is usable, but concentration or correlation should be monitored."
     return "The portfolio risk is concentrated enough to justify rebalancing or a hedge review."
+
+
+def _option_risk_summary(calculation: dict[str, Any], result: dict[str, Any]) -> list[str]:
+    approximations = result.get("approximations", {}) or {}
+    mc_var = float(result.get("mc_var", 0.0) or 0.0)
+    mc_es = float(result.get("mc_es", 0.0) or 0.0)
+    full_var = float(((result.get("full_revaluation") or {}).get("var", 0.0)) or 0.0)
+    dg_var = float(approximations.get("var_dg", 0.0) or 0.0)
+    delta_cash = float(calculation.get("delta_cash", 0.0) or 0.0)
+    gamma_cash = float(calculation.get("gamma_cash", 0.0) or 0.0)
+    return [
+        f"Monte Carlo VaR is {_fmt_number(mc_var, 4)} and Monte Carlo ES is {_fmt_number(mc_es, 4)}.",
+        f"Delta-Gamma VaR is {_fmt_number(dg_var, 4)} with delta cash {_fmt_number(delta_cash, 2)} and gamma cash {_fmt_number(gamma_cash, 2)}.",
+        f"Full revaluation VaR is {_fmt_number(full_var, 4)}." if full_var else "Full revaluation was not enabled for this run.",
+    ]
 
 
 def build_single_asset_report(calculation: dict[str, Any], result: dict[str, Any], chart_images: dict[str, str] | None = None) -> bytes:
@@ -333,14 +348,15 @@ def build_portfolio_report(calculation: dict[str, Any], result: dict[str, Any], 
         parts["Paragraph"]("Input snapshot", styles["section"]),
         _kv_table(parts, styles, [
             ("Confidence level", _fmt_percent(calculation.get("confidence", 0.0), multiply_100=True, decimals=1)),
-            ("Portfolio value", _fmt_currency(calculation.get("portfolio_value"))),
+            ("Normalization base", _fmt_number(calculation.get("portfolio_value"), 4)),
             ("History window", f"{calculation.get('start_date', '--')} to {calculation.get('end_date', '--')}"),
             ("Number of assets", str(len(items))),
         ]),
         parts["Spacer"](1, 8),
         parts["Paragraph"]("Core metrics", styles["section"]),
         _kv_table(parts, styles, [
-            ("Portfolio VaR", _fmt_currency(metrics.get("var_value"))),
+            ("Portfolio VaR (base = 1)", _fmt_number(metrics.get("var_value"), 4)),
+            ("Portfolio VaR share", _fmt_percent((float(metrics.get("var_value", 0.0) or 0.0) / max(float(calculation.get("portfolio_value", 1.0) or 1.0), 1e-12)) * 100.0)),
             ("Annual volatility", _fmt_percent(metrics.get("annual_volatility"), multiply_100=True)),
             ("Annual return", _fmt_percent(metrics.get("annual_return"), multiply_100=True)),
             ("Z-score", _fmt_number(metrics.get("z_score"))),
@@ -391,6 +407,67 @@ def build_portfolio_report(calculation: dict[str, Any], result: dict[str, Any], 
             "Return and volatility metrics are history-dependent and may change materially with the sample window.",
             "This report is analytical support material and not an investment recommendation.",
         ]))
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def build_option_risk_report(calculation: dict[str, Any], result: dict[str, Any], chart_images: dict[str, str] | None = None) -> bytes:
+    parts, styles, buffer, doc = _report_doc()
+    approximations = result.get("approximations", {}) or {}
+    full_reval = result.get("full_revaluation") or {}
+    chart_images = chart_images or {}
+    story: list[Any] = [
+        parts["Paragraph"]("Risk Calculator Report", styles["title"]),
+        parts["Paragraph"](
+            f"Option risk report. Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.",
+            styles["subtitle"],
+        ),
+        parts["Paragraph"]("Input snapshot", styles["section"]),
+        _kv_table(parts, styles, [
+            ("Confidence level", _fmt_percent(calculation.get("confidence", 0.0), multiply_100=True, decimals=1)),
+            ("Simulations", str(calculation.get("simulations", "--"))),
+            ("Horizon days", str(calculation.get("horizon_days", "--"))),
+            ("Seed mode", str(result.get("seed_mode", "--")).title()),
+            ("Seed used", str(result.get("seed_used", "--"))),
+        ]),
+        parts["Spacer"](1, 8),
+        parts["Paragraph"]("Core metrics", styles["section"]),
+        _kv_table(parts, styles, [
+            ("Delta-Normal VaR", _fmt_number(approximations.get("var_dn"), 4)),
+            ("Delta-Gamma VaR", _fmt_number(approximations.get("var_dg"), 4)),
+            ("Monte Carlo VaR", _fmt_number(result.get("mc_var"), 4)),
+            ("Monte Carlo ES", _fmt_number(result.get("mc_es"), 4)),
+            ("Full Revaluation VaR", _fmt_number(full_reval.get("var"), 4)),
+            ("Full Revaluation ES", _fmt_number(full_reval.get("es"), 4)),
+        ]),
+        parts["Spacer"](1, 8),
+        parts["Paragraph"]("Interpretation", styles["section"]),
+        _kv_table(parts, styles, [
+            ("Summary", "Monte Carlo shows the simulated PnL distribution, while Delta-Normal and Delta-Gamma provide fast approximation layers."),
+            ("Nonlinearity check", "If Full Revaluation materially exceeds Monte Carlo or Delta-Gamma, the option payoff is behaving more nonlinearly than the quick formulas suggest."),
+        ]),
+    ]
+
+    story.extend([parts["Spacer"](1, 8), parts["Paragraph"]("Executive summary", styles["section"])])
+    story.extend(_bullets(parts, styles, _option_risk_summary(calculation, result)))
+
+    for title, key in [
+        ("Monte Carlo PnL distribution", "mc_distribution"),
+    ]:
+        image = _image_from_data_url(parts, chart_images.get(key, ""))
+        if image is not None:
+            story.extend([parts["Spacer"](1, 8), parts["Paragraph"](title, styles["section"]), image])
+
+    story.extend([
+        parts["Spacer"](1, 8),
+        parts["Paragraph"]("Methodology and limits", styles["section"]),
+    ])
+    story.extend(_bullets(parts, styles, [
+        "Delta-Normal and Delta-Gamma are approximation methods and may understate nonlinear effects in large market moves.",
+        "Monte Carlo results depend on the horizon, volatility assumptions, and simulation count.",
+        "Full Revaluation is slower, but it is the most faithful of the available methods in this workflow.",
+        "This report is analytical support material and not an investment recommendation.",
+    ]))
     doc.build(story)
     return buffer.getvalue()
 

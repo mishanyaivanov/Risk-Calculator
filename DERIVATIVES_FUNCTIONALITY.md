@@ -1,35 +1,50 @@
 # Risk Analytics Platform
 
-## 1. Purpose
+## 1. Project Purpose
 
-This project is a local web-based risk calculator built with:
+This project is a local web-based risk analytics platform built around a FastAPI backend, a single-page Jinja frontend, and a Python mathematical engine.
 
-- FastAPI backend
-- Jinja single-page frontend
-- Python mathematical engine
-- Tinkoff and MOEX market-data adapters
-- Docker-based local runtime
+The platform started as a portfolio risk calculator and was later expanded into a broader decision-support tool with:
 
-The application combines legacy portfolio-risk functionality with new derivative workflows.
+- market-data adapters
+- derivative pricing
+- nonlinear risk analytics
+- stress testing
+- backtesting
+- factor attribution
+- bond / swap analysis
+- explainability and guided next-step logic
+- PDF reporting
 
-It is designed for:
+The final product is intended to behave not only like a calculator, but like a structured analytics workspace.
 
-- single-asset risk estimation
-- portfolio risk estimation
+---
+
+## 2. Final Scope
+
+The current release covers:
+
+- single-asset market risk
+- portfolio market risk
 - option pricing and Greeks
-- option VaR and Monte Carlo simulation
+- option VaR with Monte Carlo and full revaluation
 - futures / forward / SPFI pricing
-- bond cashflow and swap-spread analysis
-- linear derivative VaR / ES
+- linear derivative risk
 - model backtesting
 - factor risk attribution
 - deterministic stress testing
+- bond cashflow and swap-overlay analysis
+- explainability, copilot, hedge scenarios, and PDF reporting
 
-## 2. Runtime Architecture
+The final release intentionally avoids adding more heavy mathematics. The emphasis is on correctness, usability, reporting quality, consistent UX, and professional presentation.
 
-The application has five layers.
+---
 
-### 2.1 Frontend Layer
+## 3. Runtime Architecture
+
+The application is organized into five layers.
+
+### 3.1 Frontend Layer
 
 Primary file:
 
@@ -39,12 +54,12 @@ Responsibilities:
 
 - render the whole workspace in one page
 - switch between `Basic` and `Pro` modes
-- collect form inputs
-- call backend endpoints
-- show cards, tables, charts, and inline errors
-- hide raw JSON in Basic mode
+- collect inputs
+- show forms, cards, charts, status strips, and inline errors
+- coordinate cross-tab data transfer
+- create report requests after calculations are completed
 
-### 2.2 API Layer
+### 3.2 API Layer
 
 Primary file:
 
@@ -52,13 +67,13 @@ Primary file:
 
 Responsibilities:
 
-- define request schemas
-- validate incoming data
-- call service-layer functions
-- normalize API responses for the UI
-- serve the main HTML page
+- define request models
+- validate input
+- orchestrate service calls
+- normalize responses for the frontend
+- expose search, analytics, stress, and reporting endpoints
 
-### 2.3 Data Adapter Layer
+### 3.3 Data Adapter Layer
 
 Files:
 
@@ -67,15 +82,13 @@ Files:
 
 Responsibilities:
 
-- fetch instruments and candles from external providers
-- convert external responses into project-friendly dictionaries
-- feed pricing and risk tabs with market data
+- fetch or cache market instruments
+- load candles and metadata
+- expose provider-specific market data in a project-friendly format
 
-Important note:
+These modules are adapters only. They do not perform the risk calculations themselves.
 
-- these modules are data adapters, not pricing engines
-
-### 2.4 Mathematical Engine Layer
+### 3.4 Mathematical Engine Layer
 
 Files:
 
@@ -85,7 +98,6 @@ Files:
 - `services/option_var.py`
 - `services/forward_pricing.py`
 - `services/linear_risk.py`
-- `services/bond_swap.py`
 - `services/backtesting.py`
 - `services/risk_attribution.py`
 - `services/stress_testing.py`
@@ -95,38 +107,42 @@ Responsibilities:
 
 - transform prices into PnL
 - compute VaR / ES / LVaR
-- compute portfolio covariance risk
+- compute covariance-based portfolio risk
 - price derivatives
-- simulate nonlinear PnL
-- decompose risk by factor
-- validate models on history
-- reprice portfolios under stress scenarios
-- value bond cashflows and calibrate swap hedges
+- simulate nonlinear option PnL
+- validate model behavior on history
+- decompose factor risk
+- reprice portfolios under stress
+- build bond cash flows and floating-leg overlays
 
-### 2.5 Service Intelligence Layer
+### 3.5 Service Intelligence Layer
 
 Files:
 
+- `services/excel_import.py`
 - `services/explainability.py`
 - `services/risk_copilot.py`
 - `services/hedge_constructor.py`
-- `services/excel_import.py`
 - `services/reporting.py`
 
 Responsibilities:
 
-- turn raw metrics into plain-language explanations
-- highlight the most important signals for non-expert users
-- suggest next analytical steps
-- build before / after hedge scenarios
-- reduce manual input friction through Excel / CSV import
-- generate structured PDF reports for completed calculations
+- reduce input friction through Excel / CSV import
+- translate raw metrics into plain-language summaries
+- highlight the most important signals
+- suggest next analytical actions
+- build quick hedge scenarios
+- generate downloadable PDF reports
 
-## 3. UI Modes
+---
 
-The interface supports two experience modes.
+## 4. UI Modes
 
-### 3.1 Basic Mode
+The product supports two user modes.
+
+### 4.1 Basic Mode
+
+Basic mode is the shortest path through the product.
 
 Visible tabs:
 
@@ -135,1078 +151,1011 @@ Visible tabs:
 - `MOEX`
 - `Stress Scenarios`
 
-Visible support features in Basic mode:
+Basic-mode support features:
 
-- Excel / CSV import for one-asset prices and portfolio composition
-- plain-language explainability blocks
-- `Risk Copilot` summaries for single-asset and portfolio risk
-- `Hedge Constructor` scenarios for single-asset and portfolio risk
+- Excel / CSV import
+- plain-language result summaries
+- `Risk Copilot`
+- `Hedge Constructor`
+- minimal clutter
 
 Design goals:
 
-- no raw JSON in the main path
-- plain-language metric labels
-- preset-based inputs
-- inline validation and clear next-step messages
-- inline field explanations directly in the UI
+- keep only the fastest workflows visible
+- avoid raw JSON in the main path
+- expose only the most useful fields
+- use clear wording and direct next-step messages
 
-### 3.2 Pro Mode
+### 4.2 Pro Mode
+
+Pro mode exposes the full analytical workspace.
 
 Visible tabs:
 
 - all Basic tabs
 - `Options`
 - `Futures & SPFI`
-- `Bond & Swap`
 - `Option Risk`
 - `Model Check`
 - `Factor Breakdown`
+- `Bond & Swap`
 
 Design goals:
 
 - full analytical coverage
 - advanced controls
-- optional raw details through collapsible sections
-- structured builders instead of raw JSON where the workflow can be simplified
+- structured builders instead of raw JSON where practical
+- more detailed diagnostics without changing the core workflow model
 
-## 4. Role of MOEX API
+---
 
-MOEX is used as a live market-data source for the new derivative workflows.
+## 5. Functional Map
 
-It is **not** used as the pricing engine.
-
-What MOEX provides in this project:
-
-- market instrument lists
-- option board rows
-- historical candles by `SECID`
-- auto-filled spot values
-- auto-filled historical `mu` and `sigma`
-- workflow shortcuts from market data into derivative forms
-
-What MOEX does not provide here:
-
-- Greeks
-- VaR
-- ES
-- pricing logic
-- stress logic
-
-Those calculations are performed locally in the Python mathematical engine.
-
-## 5. Full Feature Map
-
-### 5.1 Legacy Functionality
+### 5.1 Core User Flows
 
 - `One Asset`
 - `Portfolio`
-
-### 5.2 New Functionality
-
 - `MOEX`
+- `Stress Scenarios`
+
+### 5.2 Advanced Analytical Flows
+
 - `Options`
 - `Futures & SPFI`
 - `Option Risk`
 - `Model Check`
 - `Factor Breakdown`
-- `Stress Scenarios`
+- `Bond & Swap`
+
+### 5.3 Product Extensions
+
 - Excel / CSV import
+- explainability
 - `Risk Copilot`
 - `Hedge Constructor`
-- quick bridges from hedge suggestions into derivative workflows
-- PDF report generation for completed calculations
-- shared Tinkoff file-cache with background refresh
+- PDF reporting
+- shared Tinkoff file-cache
+- bridges between workflows
 
-### 5.3 Service Extensions Added on Top of the Core Quant Engine
+---
 
-These features do not replace the mathematical engine. They make the product faster, easier to use, and closer to a real decision-support service.
+## 6. Market Data Adapters
 
-#### Shared Tinkoff File-Cache
+### 6.1 Tinkoff
 
-Purpose:
+Used for:
 
-- avoid a slow live API search on every user query
-- provide a shared instrument dictionary for the whole service
-- keep search responsive for common tickers
+- instrument search
+- one-asset historical candles
+- portfolio candle history
 
-Implementation:
+Important implementation note:
+
+Tinkoff search no longer depends on a live API round-trip for every request.
+
+The standard search flow now uses a shared file-cache:
 
 - cache file: `cache/tinkoff_instruments_cache.json`
-- standard search endpoint reads from the file-cache
-- live API search remains available as a fallback button in the UI
-- live results can be merged back into the cache
-- the cache is deduplicated by `FIGI`
-- the service can rebuild the cache fully through a dedicated endpoint
-- the service can refresh the cache automatically when it becomes stale
+- shared for the entire service
+- not user-specific
+- refreshed when stale
+- deduplicated by `FIGI`
 
-Why this matters:
+Normal flow:
 
-- faster user search
-- lower dependence on the external Tinkoff API for common flows
-- predictable shared behavior for all users
+1. user enters a ticker or part of a name
+2. `/api/search` searches the cache file
+3. exact ticker matches are ranked first
+4. similar results are still returned below the exact match
 
-#### Excel / CSV Import
+Fallback flow:
 
-Purpose:
+1. user clicks the small `API` button
+2. `/api/search_live` performs a live Tinkoff search
+3. found results can be merged back into the shared cache
 
-- remove manual data entry for price series and portfolio weights
+Refresh flow:
 
-Supported workflows:
+- `/api/tinkoff_cache/rebuild` rebuilds the entire file
+- the service can refresh automatically when the cache becomes stale
 
-- `One Asset`
-- `Portfolio`
+### 6.2 MOEX
 
-Behavior:
+Used for:
 
-- upload templates are explained directly in the UI
-- file inputs are cleared after use
-- backend upload objects are closed after processing
-- imported values are normalized into the project request format
+- market instrument browsing
+- option board loading
+- candle loading by `SECID`
+- deriving spot, daily `mu`, and daily `sigma`
+- feeding derivative tabs with market context
 
-#### Explainability, Risk Copilot, and Hedge Constructor
+MOEX is not used as the pricing engine. Pricing and risk are still computed locally in Python.
 
-Purpose:
+---
 
-- turn a calculator into a decision-support workflow
+## 7. API Endpoints
 
-Behavior:
-
-- `Explainability` turns raw metrics into a concise human-readable summary
-- `Risk Copilot` highlights the main signals and suggested next steps
-- `Hedge Constructor` shows before / after hedge scenarios and quick actions
-- bridge actions can move a user directly into `Futures & SPFI`, `Options`, or back into a rebalanced `Portfolio`
-
-#### PDF Reporting
-
-Purpose:
-
-- generate a formal downloadable report after a user completes a calculation
-
-Current scope:
-
-- `One Asset`
-- `Portfolio`
-
-Behavior:
-
-- the user calculates first
-- then the user clicks `Create PDF Report`
-- the backend generates a structured report
-- when generation is complete, the UI exposes a `Download PDF` action
-- the report can include summary metrics, interpretation blocks, and chart snapshots
-
-### 5.4 Migration Status from `New functions`
-
-The temporary directory `New functions` was used as a teammate reference source.
-
-Integrated into runtime:
-
-- `New functions/backtesting.py` -> `services/backtesting.py`
-- `New functions/risk_attribution.py` -> `services/risk_attribution.py`
-- `New functions/stress_testing.py` -> `services/stress_testing.py`
-
-Added on top of that integrated layer:
-
-- `services/option_pricing.py`
-- `services/option_var.py`
-- `services/forward_pricing.py`
-- `services/linear_risk.py`
-- `services/moex_service.py`
-
-Reference-only files that remain outside runtime:
-
-- `New functions/main.py`
-- `New functions/README.md`
-- `New functions/test_riskcalc_extensions.py`
-- `New functions/__init__.py`
-
-## 6. API Endpoints
-
-### 6.1 Core Endpoints
+### 7.1 Core UI and Search
 
 - `GET /`
-  - serves the UI
+  - serves the main UI
 - `GET /api/search`
-  - Tinkoff instrument search
+  - shared-cache Tinkoff search
 - `GET /api/search_live`
-  - live fallback Tinkoff search when the cache result is not enough
+  - live Tinkoff fallback search
 - `POST /api/tinkoff_cache/rebuild`
-  - rebuild the shared Tinkoff cache file
-- `POST /api/calculate`
-  - single-asset VaR / ES / LVaR
-- `POST /api/import_prices_file`
-  - import a single-asset price series from Excel / CSV
-- `POST /api/calculate_portfolio`
-  - portfolio VaR and efficient frontier
-- `POST /api/import_portfolio_file`
-  - import portfolio composition from Excel / CSV
-- `POST /api/report/single/create`
-  - create a single-asset PDF report
-- `POST /api/report/portfolio/create`
-  - create a portfolio PDF report
-- `GET /api/report/download/{report_id}`
-  - download a generated PDF report
+  - full cache rebuild
 
-### 6.2 Derivative and Validation Endpoints
+### 7.2 Single Asset and Portfolio
+
+- `POST /api/calculate`
+  - single-asset risk
+- `POST /api/import_prices_file`
+  - import one-asset price history from Excel / CSV
+- `POST /api/calculate_portfolio`
+  - portfolio risk
+- `POST /api/import_portfolio_file`
+  - import portfolio rows from Excel / CSV
+
+### 7.3 MOEX and Derivatives
 
 - `GET /api/moex/instruments`
-  - MOEX instrument list
+  - instrument list
 - `GET /api/moex/option_board/{underlying_asset_code}`
-  - MOEX option board
+  - option board
 - `POST /api/moex/candles`
-  - MOEX candles
+  - candle history
 - `POST /api/option_pricing`
   - Black-Scholes price and Greeks
 - `POST /api/option_var`
-  - analytical option VaR and Monte Carlo
+  - option VaR / ES / Monte Carlo / full revaluation
 - `POST /api/forward_pricing`
-  - futures / forward / SPFI pricing
+  - linear derivative pricing
 - `POST /api/linear_var`
-  - linear derivative VaR / ES / scenario PnL
-- `POST /api/bond_swap`
-  - bond cashflow valuation and swap-spread calibration
+  - linear derivative risk
+
+### 7.4 Validation and Decomposition
+
 - `POST /api/backtest`
-  - rolling backtest and diagnostics
+  - model validation
 - `POST /api/risk_attribution`
-  - factor VaR attribution
+  - factor contribution analysis
 - `POST /api/stress_test`
-  - full-revaluation stress scenarios
+  - deterministic stress scenarios
+- `POST /api/bond_swap`
+  - bond and swap-overlay package
 
-## 7. Frontend Contract Sheet
+### 7.5 Reporting
 
-This section documents the most important API-to-UI contracts.
+- `POST /api/report/single/create`
+  - create a `One Asset` PDF report
+- `POST /api/report/portfolio/create`
+  - create a `Portfolio` PDF report
+- `POST /api/report/option-risk/create`
+  - create an `Option Risk` PDF report
+- `GET /api/report/download/{report_id}`
+  - download a generated report
 
-### 7.1 `POST /api/calculate`
+---
 
-Purpose:
+## 8. Detailed Tab-by-Tab Functionality
 
-- single-asset risk calculation
-
-Important response fields:
-
-- `historical_var`
-- `es`
-- `parametric_var`
-- `lvar`
-- `risk_status`
-- `explanation`
-- `copilot`
-- `hedge_constructor`
-- `candles`
-- `pnl_series`
-
-Important UX rule:
-
-- the single-asset screen no longer shows pseudo-backtest output
-- it shows `risk_status` instead
-
-`risk_status` contract:
-
-- `severity`: `green | yellow | red`
-- `label`: plain-language risk label
-- `loss_share_pct`: VaR as percent of position value
-- `summary`: short guidance text
-
-`explanation` contract:
-
-- concise human-readable summary
-- key takeaways
-- next steps
-
-`copilot` contract:
-
-- one-line interpretation
-- key signals with severity
-- suggested actions
-
-`hedge_constructor` contract:
-
-- simple before / after hedge scenarios
-- improvement estimates
-- optional quick bridge into `Futures & SPFI`
-- optional protective-put bridge into `Options`
-
-### 7.2 `POST /api/calculate_portfolio`
+## 8.1 One Asset
 
 Purpose:
 
-- portfolio risk and efficient frontier
+- estimate risk for one instrument or one manually provided price path
 
-Important response fields:
+Input modes:
 
-- `portfolio_metrics`
-- `correlation_matrix`
-- `dates`
-- `assets_cumulative_returns`
-- `portfolio_cumulative_return`
-- `efficient_frontier`
-- `portfolio_status`
-- `portfolio_copilot`
-- `portfolio_hedge_constructor`
+- `API`
+- `Manual`
+- `Random`
 
-Validation rules:
+Capabilities:
 
-- portfolio weights must sum to a positive value
-- live Tinkoff data requires `TINKOFF_TOKEN`
+- Tinkoff search
+- manual price input
+- random sample generation
+- Excel / CSV import
+- parametric VaR
+- historical VaR
+- expected shortfall
+- liquidity-adjusted VaR
+- plain-language explanation
+- `Risk Copilot`
+- `Hedge Constructor`
+- PDF report generation
 
-Portfolio service layer behavior:
+Main outputs:
 
-- `portfolio_status` gives a plain-language structural summary
-- `portfolio_copilot` highlights concentration and diversification signals
-- `portfolio_hedge_constructor` proposes simple rebalance or overlay scenarios
+- price history chart
+- VaR
+- ES
+- LVaR
+- interpretation summary
+- copilot signals
+- hedge scenarios
 
-### 7.3 `POST /api/option_var`
-
-Purpose:
-
-- option risk analytics
-
-Important response fields:
-
-- `approximations`
-- `pnl_dg_mc`
-- `mc_var`
-- `mc_es`
-- `seed_used`
-- `seed_mode`
-- `full_revaluation`
-
-Monte Carlo contract:
-
-- `seed` in the request is optional
-- if `seed` is omitted, the backend uses a random seed
-- if `seed` is provided, the result is reproducible
-
-UI behavior:
-
-- Basic-mode users do not see this tab
-- pro users can choose random or fixed-seed mode
-
-### 7.4 Error Handling Contract
-
-UI rule for all tabs:
-
-- every request checks `res.ok`
-- errors are taken from `detail` first, then `error`
-- errors are shown inline inside the current tab
-- stale success output is not treated as a valid new result
-
-## 8. Mathematical Engine: Legacy Functions
-
-## 8.1 `services/risk_calculator.py`
-
-This is the original single-asset risk core.
-
-Functions:
-
-- `parse_price_input(raw_input)`
-  - parse manual text input into numeric prices
-- `generate_random_prices(days, start_price, volatility)`
-  - generate a demo price path
-- `normalize_confidence(value)`
-  - normalize confidence from decimal or percent form
-- `z_value_for_confidence(confidence)`
-  - compute the normal quantile for any valid confidence in `(0, 1)`
-- `pnl_from_prices(prices, position_size)`
-  - convert price history into PnL series
-- `historical_var_discrete(pnl, confidence)`
-  - historical discrete VaR
-- `expected_shortfall_discrete(pnl, confidence)`
-  - historical ES
-- `parametric_var(pnl, confidence)`
-  - normal VaR using sample mean and volatility
-- `normal_liquidation_cost(mid_market_value, spread_percent)`
-  - basic liquidation cost
-- `stressed_liquidation_cost(mid_market_value, spread_percent, confidence, sigma_spread_percent)`
-  - stressed liquidation cost
-- `linear_unwind_adjustment_factor(days)`
-  - multi-day unwind factor
-- `linear_unwind_adjusted_var(base_var, days)`
-  - LVaR-style unwind adjustment
-
-Main formulas:
-
-- `PnL_t = position_size * (P_t - P_(t-1))`
-- `VaR = max(0, -q_alpha(PnL))`
-- `ES = max(0, -average(tail PnL))`
-- `q_alpha = mu - z * sigma`
-
-## 8.2 `services/portfolio_manager.py`
-
-This is the original portfolio-risk block.
-
-Functions:
-
-- `calculate_portfolio_var(returns, weights, confidence, portfolio_value)`
-  - covariance-based portfolio VaR
-- `generate_efficient_frontier(returns, num_portfolios)`
-  - random portfolio cloud for return-risk visualization
-
-Main formulas:
-
-- `sigma_p^2 = w^T Sigma w`
-- `VaR = portfolio_value * z * sigma_p`
-
-## 9. Mathematical Engine: New Functions
-
-## 9.1 `services/option_pricing.py`
+## 8.2 Portfolio
 
 Purpose:
 
-- price a European option and compute Greeks
+- evaluate multi-asset covariance risk
 
-Functions:
+Input model:
 
-- `normalize_option_type(option_type)`
-- `option_intrinsic_value(option_type, spot, strike)`
-- `black_scholes_price_and_greeks(option_type, spot, strike, maturity_years, rate, volatility, dividend_yield)`
+- list of instruments
+- editable weights
+- date range
+- confidence level
 
-Main formulas:
+Important scale convention:
 
-- `d1 = [ln(S/K) + (r - q + 0.5*sigma^2)T] / (sigma*sqrt(T))`
-- `d2 = d1 - sigma*sqrt(T)`
-- `Call = S*exp(-qT)*N(d1) - K*exp(-rT)*N(d2)`
-- `Put = K*exp(-rT)*N(-d2) - S*exp(-qT)*N(-d1)`
+- the portfolio is normalized to a capital base of `1.0`
+- portfolio VaR is therefore shown as a share of normalized capital
+- annual return and annual volatility are shown as percentages
+- cumulative growth is shown from `1.00`
 
-Returned metrics:
+Capabilities:
 
-- price
+- Tinkoff-based portfolio search
+- Excel / CSV import
+- automatic weight normalization when the sum is positive
+- covariance VaR
+- annualized return
+- annualized volatility
+- correlation matrix
+- efficient frontier
+- cumulative return chart
+- allocation chart
+- plain-language explanation
+- `Risk Copilot`
+- `Hedge Constructor`
+- PDF report generation
+
+Main outputs:
+
+- normalized portfolio VaR
+- annual volatility
+- annual return
+- efficient frontier with the current portfolio highlighted
+- normalized cumulative growth chart
+- correlation heatmap
+- allocation pie chart
+
+## 8.3 MOEX
+
+Purpose:
+
+- load live market context for derivatives
+
+Basic flow:
+
+1. choose a market category
+2. load instruments
+3. select a row
+4. load candles
+5. auto-fill market context
+
+Pro flow:
+
+1. choose engine and market directly
+2. load instrument list
+3. optionally load option board
+4. send rows into derivative screens
+5. load candles by `SECID`
+
+Capabilities:
+
+- browse exchange instruments
+- load option boards
+- load candles
+- derive spot, daily `mu`, and daily `sigma`
+- feed derivative forms with live market context
+
+## 8.4 Options
+
+Purpose:
+
+- price one option contract and compute Greeks
+
+Capabilities:
+
+- Black-Scholes pricing
+- `d1`, `d2`
 - delta
 - gamma
 - vega
 - theta
 - rho
-- `d1`
-- `d2`
+- position scaling through quantity and multiplier
+- bridge into `Option Risk`
 
-## 9.2 `services/option_var.py`
+Interpretation focus:
 
-Purpose:
+- moneyness
+- intrinsic vs time value
+- delta sensitivity
+- vega / theta balance
 
-- estimate option VaR by approximation and simulation
-
-Functions:
-
-- `covariance_from_sigmas_and_correlation(sigma_values, correlation_matrix)`
-- `option_var_moment_approximations(delta_cash, gamma_cash, theta_horizon, mu_horizon, sigma_horizon, z_value)`
-- `option_var_moment_approximations_multifactor(...)`
-- `simulate_delta_gamma_pnl(delta_cash, gamma_cash, theta_horizon, mu_horizon, sigma_horizon, simulations, seed)`
-- `simulate_delta_gamma_pnl_multifactor(...)`
-- `simulate_full_revaluation_pnl(...)`
-- `simulate_full_revaluation_pnl_multifactor(...)`
-
-Single-factor approximation logic:
-
-- `PnL ~= Delta_cash * dS + Theta`
-- `PnL ~= Delta_cash * dS + 0.5 * Gamma_cash * dS^2 + Theta`
-
-Simulation logic:
-
-- Delta-Gamma Monte Carlo simulates spot shocks and applies the Delta-Gamma approximation
-- Full Revaluation Monte Carlo simulates shocks and reprices the option with the pricing engine
-
-Current runtime behavior:
-
-- Monte Carlo is random by default
-- fixed seed is optional
-- backend returns `seed_used`
-
-## 9.3 `services/forward_pricing.py`
+## 8.5 Futures & SPFI
 
 Purpose:
 
-- price linear derivatives such as futures, forwards, and SPFI-style contracts
-
-Functions:
-
-- `normalize_linear_derivative_type(instrument_type)`
-- `theoretical_forward_price(spot, maturity_years, rate, income_yield)`
-- `price_linear_derivative(instrument_type, spot, maturity_years, rate, income_yield, entry_price, quantity, multiplier, scenario_spot)`
-
-Main formulas:
-
-- `F = S * exp((r - q)T)`
-- `discount_factor = exp(-rT)`
-- `PnL_vs_entry = (F_current - F_entry) * quantity * multiplier`
-
-## 9.4 `services/linear_risk.py`
-
-Purpose:
-
-- compute linear derivative VaR / ES and scenario PnL
-
-Functions:
-
-- `returns_from_prices(prices)`
-- `rolling_horizon_pnl(single_day_pnl, horizon_days)`
-- `linear_derivative_var(spot, quantity, multiplier, confidence, horizon_days, mu_daily, sigma_daily, historical_prices, scenario_move_pct, instrument_type)`
+- price a linear derivative and estimate linear risk
 
 Capabilities:
 
-- parametric VaR / ES
-- historical VaR / ES
-- scenario PnL
-
-Main logic:
-
-- `exposure_cash = spot * quantity * multiplier`
-- `mu_horizon = mu_daily * horizon_days`
-- `sigma_horizon = sigma_daily * sqrt(horizon_days)`
-- `PnL_mu = exposure_cash * mu_horizon`
-- `PnL_sigma = |exposure_cash| * sigma_horizon`
-
-## 9.5 `services/backtesting.py`
-
-Purpose:
-
-- validate VaR / ES models on rolling history
-
-Functions:
-
-- `_safe_log_probability(probability)`
-- `_chi2_sf_df1(statistic)`
-- `_chi2_sf_df2(statistic)`
-- `rolling_historical_var_es(pnl, confidence, window)`
-- `kupiec_pof_test(exceptions, alpha)`
-- `christoffersen_independence_test(exceptions)`
-- `christoffersen_conditional_coverage_test(exceptions, alpha)`
-- `es_realized_shortfall_diagnostics(realized_pnl, var_pnl_thresholds, es_losses)`
-
-Outputs:
-
-- rolling realized PnL
-- rolling VaR thresholds
-- exception sequence
-- `green / yellow / red` verdicts
-- ES tail diagnostics
-
-## 9.6 `services/risk_attribution.py`
-
-Purpose:
-
-- decompose Delta-Normal portfolio VaR by factor
-
-Functions:
-
-- `_portfolio_sigma(exposures, covariance_matrix)`
-- `delta_normal_var_contributions(factor_names, delta_cash_values, mu_horizon_values, covariance_horizon, z_value)`
-
-Outputs:
-
-- portfolio mean
-- portfolio sigma
-- portfolio VaR
-- marginal VaR by factor
-- component VaR by factor
-- component share by factor
-
-## 9.7 `services/stress_testing.py`
-
-Purpose:
-
-- full-revaluation stress testing for option portfolios
-
-Functions:
-
-- `evaluate_full_revaluation_stress_scenario(positions, horizon_days, underlying_return_shocks, volatility_shift, rate_shift)`
-- `build_standard_stress_scenarios(underlying_ids)`
-
-Built-in scenario families:
-
-- market down 10%
-- market down 20%
-- crash with higher volatility
-- rates up
-- rates down
-
-Outputs:
-
-- base portfolio value
-- stressed portfolio value
-- total PnL
-- per-position stressed PnL
-
-## 9.8 `services/bond_swap.py`
-
-Purpose:
-
-- bond cashflow construction
-- curve interpolation
-- bond PV valuation
-- floating-leg valuation
-- fair swap-spread calibration
-- one-year rate-scenario analysis for hedge constructions
-
-Core functions:
-
-- `parse_rate(raw)`
-- `tenor_to_years(raw)`
-- `normalize_curve_points(curve)`
-- `interpolate_curve_rate(curve, tenor_years)`
-- `build_bond_cashflows(issue)`
-- `value_bond_cashflows(cashflows, discount_curve, valuation_date, include_coupon, include_principal)`
-- `value_floating_swap_leg(cashflows, projection_curve, discount_curve, valuation_date, notional, spread_bps, hedge_ratio, pay_receive)`
-- `solve_swap_spread_bps(cashflows, projection_curve, discount_curve, valuation_date, target_pv, notional, hedge_ratio, pay_receive, target_net_pv)`
-- `evaluate_bond_swap_package(issue, curve, valuation_date, rate_scenarios_1y, hedge_ratios, include_full_issue_variant)`
-- `shift_curve_to_1y_rate(curve, rate_1y)`
-
-What the module returns:
-
-- the full coupon and principal cashflow schedule
-- PV of coupon-only, principal-only, and full bond cashflows
-- several hedge constructions for different hedge ratios
-- fair spread in basis points for each construction
-- one-year scenario results after shifting the curve around the 1Y pivot
-
-User meaning:
-
-- this block is for interest-rate hedging logic, not for equity option VaR
-- it answers questions such as:
-  - what are the bond cashflows
-  - what is the bond PV on the current curve
-  - what floating spread would offset coupon PV or full issue PV
-  - how sensitive is that construction to rate moves
-
-## 9.9 Service Intelligence Modules
-
-### `services/excel_import.py`
-
-Purpose:
-
-- read Excel / CSV uploads for non-technical users
-- detect sensible column names automatically
-- convert files into UI-ready payloads
-
-Main functions:
-
-- `parse_price_series_file(file_bytes, filename)`
-- `parse_portfolio_file(file_bytes, filename)`
-
-Behavior:
-
-- accepts `.xlsx`, `.xls`, and `.csv`
-- detects common names such as `price`, `close`, `ticker`, `figi`, `weight`
-- prepares preview metadata for the frontend
-
-### `services/explainability.py`
-
-Purpose:
-
-- convert numeric risk output into a short plain-language explanation
-
-Main functions:
-
-- `build_single_asset_explanation(...)`
-- `build_portfolio_explanation(...)`
-
-Behavior:
-
-- produces summary text
-- highlights the main takeaways
-- proposes next steps without changing the mathematics
-
-### `services/risk_copilot.py`
-
-Purpose:
-
-- act as the first interpretation layer above raw metrics
-
-Main functions:
-
-- `build_single_asset_copilot(...)`
-- `build_portfolio_copilot(...)`
-
-Behavior:
-
-- rates the severity of key signals
-- explains what matters most
-- points the user toward stress testing, hedge analysis, or rebalancing
-
-### `services/hedge_constructor.py`
-
-Purpose:
-
-- generate simple before / after hedge ideas from existing calculations
-
-Main functions:
-
-- `build_single_asset_hedge_constructor(...)`
-- `build_portfolio_hedge_constructor(...)`
-
-Behavior:
-
-- builds quick reduction or hedge scenarios
-- estimates directional improvement in VaR-like metrics
-- provides action bridges into `Futures & SPFI`, `Options`, or portfolio reweighting
-
-## 10. Data Adapter Modules
-
-## 10.1 `services/tinkoff_service.py`
-
-Functions:
-
-- `similarity_score(str1, str2, threshold)`
-- `find_instruments(name, token)`
-- `_price_to_float(price)`
-- `get_candles(figi, start_date, end_date, token)`
-
-Purpose:
-
-- legacy instrument search and price history
-
-## 10.2 `services/moex_service.py`
-
-Functions:
-
-- `_rows_to_dicts(payload, table_name)`
-- `_get_iss_json(session, url, params)`
-- `_resolve_security_board(session, secid)`
-- `get_market_instruments(session, engine, market)`
-- `get_option_board(session, underlying_asset_code)`
-- `get_instrument_candles(session, secid, start_date, end_date, engine, market)`
-
-Purpose:
-
-- live MOEX integration for the derivative flow
-- automatic board resolution for candle downloads
-- option-board loading
-- market list browsing
-
-## 11. User Workflows
-
-The platform is intentionally organized as a layered workflow:
-
-1. Load or import data
-2. Run a pricing or risk calculation
-3. Read the interpretation
-4. Compare hedge or stress scenarios
-5. Export a report if the result needs to be documented
-
-This structure is the main product difference versus a pure formula demo.
-
-## 11.1 One Asset
-
-Use when:
-
-- you want a simple risk estimate for one instrument
-
-Main capabilities:
-
-- Tinkoff search
-- manual price-series input
-- random demo series
-- Excel / CSV price import
-- parametric VaR
-- historical VaR
-- expected shortfall
-- liquidity-adjusted VaR
-- explainability summary
-- `Risk Copilot`
-- `Hedge Constructor`
-- PDF report generation
-
-Flow:
-
-1. Choose `API`, `Manual`, or `Random`
-2. Optionally import a price series from Excel / CSV
-3. Select a risk preset
-4. Run the calculation
-5. Read VaR, ES, LVaR, the plain-language explanation, and `Risk Copilot`
-6. If needed, continue directly into `Hedge Constructor`, `Futures & SPFI`, or `Options`
-
-## 11.2 Portfolio
-
-Use when:
-
-- you want covariance-based portfolio analytics
-
-Main capabilities:
-
-- Tinkoff-based portfolio lookup
-- Excel / CSV portfolio import
-- weight editing
-- covariance-based VaR
-- annualized return and volatility
-- efficient frontier
-- cumulative return chart
-- correlation matrix
-- allocation chart
-- explainability summary
-- `Risk Copilot`
-- `Hedge Constructor`
-- rebalance shortcuts
-- PDF report generation
-
-Flow:
-
-1. Add instruments
-2. Optionally import composition from Excel / CSV
-3. Set or adjust weights
-4. Select a date range
-5. Run portfolio risk
-6. Review VaR, efficient frontier, cumulative return, correlation matrix, and `Risk Copilot`
-7. If useful, apply a hedge or rebalance scenario directly from `Hedge Constructor`
-
-## 11.3 MOEX
-
-Basic flow:
-
-1. Select a market category
-2. Load instruments
-3. Choose one row
-4. Load candles
-5. Use auto-filled spot, `mu`, and `sigma`
-
-Pro flow:
-
-1. Choose engine and market directly
-2. Load instrument list
-3. Optionally load option board
-4. Send selected rows into derivative tabs
-5. Load candles by `SECID`
-
-Main capabilities:
-
-- browse exchange instruments
-- load option boards
-- load candles
-- derive `mu` and `sigma` from market history
-- push live market context into derivative tabs
-
-## 11.4 Options
-
-Use when:
-
-- you need price and Greeks for one option contract
-
-Main capabilities:
-
-- Black-Scholes pricing
-- position-scaled Greeks
-- intrinsic and time-value interpretation
-- quick transfer into `Option Risk`
-
-Flow:
-
-1. Fill the contract manually or from MOEX
-2. Run pricing
-3. Review price, Greeks, and position-level values
-4. Copy the same contract into `Option Risk`
-
-## 11.5 Futures & SPFI
-
-Use when:
-
-- you need pricing and linear risk for a futures / forward / SPFI position
-
-Main capabilities:
-
-- fair-price estimation
-- carry model
+- fair price
+- carry
 - entry PnL
 - scenario PnL
 - parametric linear VaR
 - historical linear VaR
-- scenario loss comparison
-- quick hedge-template loading from `Hedge Constructor`
+- scenario loss
+- direct loading from `Hedge Constructor`
 
-Flow:
+## 8.6 Option Risk
 
-1. Fill spot, maturity, rate, carry, quantity, multiplier
-2. Run pricing
-3. Run linear risk
-4. Review parametric, historical, and scenario outputs
+Purpose:
 
-## 11.6 Option Risk
+- estimate risk for one option position with approximation and simulation methods
 
-Use when:
-
-- you need analytical VaR and simulation for one option position
-
-Main capabilities:
+Capabilities:
 
 - Delta-Normal approximation
 - Delta-Gamma approximation
 - Monte Carlo simulation
-- optional fixed seed
-- full revaluation Monte Carlo
-- nonlinear sensitivity interpretation
+- fixed or random seed
+- full revaluation
+- PnL distribution histogram
+- PDF report generation
 
-Flow:
+Main outputs:
 
-1. Fill the option contract
-2. Enter market assumptions (`mu`, `sigma`, horizon)
-3. Choose random or fixed-seed Monte Carlo
-4. Run the calculation
-5. Compare:
-   - Delta-Normal
-   - Delta-Gamma
-   - Delta-Gamma Monte Carlo
-   - Full Revaluation Monte Carlo
+- Delta-Normal VaR
+- Delta-Gamma VaR
+- Monte Carlo VaR
+- Monte Carlo ES
+- optional Full Revaluation VaR / ES
+- MC histogram
+- interpretation panel
 
-## 11.7 Model Check
+## 8.7 Model Check
 
-Use when:
+Purpose:
 
-- you need rolling validation of a VaR model
+- validate VaR behavior on historical PnL
 
-Main capabilities:
+Capabilities:
 
-- rolling-window backtest
+- rolling historical VaR / ES
 - POF test
 - independence test
 - conditional coverage
 - ES diagnostics
-- qualitative interpretation of pass / warning / issue outcomes
+- qualitative verdict interpretation
 
-Flow:
+## 8.8 Factor Breakdown
 
-1. Provide PnL history
-2. Select confidence and window
-3. Run backtest
-4. Review exception counts, verdicts, and ES diagnostics
+Purpose:
 
-## 11.8 Factor Breakdown
+- explain what drives portfolio VaR in a factor model
 
-Use when:
-
-- you need to understand which factors consume portfolio VaR
-
-Main capabilities:
+Capabilities:
 
 - delta-normal factor decomposition
+- portfolio sigma
 - marginal VaR
 - component VaR
 - concentration interpretation
 
-Flow:
+## 8.9 Bond & Swap
 
-1. Enter factors, deltas, means, and covariance matrix
-2. Run factor breakdown
-3. Review marginal and component contributions
+Purpose:
 
-## 11.9 Bond & Swap
+- value bond cash flows
+- calibrate a floating overlay
+- compare coupon-only and full-issue hedge constructions
 
-Use when:
+Capabilities:
 
-- you want to value a bond issue on a curve
-- you want to see the coupon / principal cashflow schedule
-- you want to calibrate a pay-floating swap spread as a hedge
+- cashflow schedule generation
+- coupon PV
+- principal PV
+- total PV
+- fair spread in bps
+- scenario sensitivity under 1Y-rate changes
+- guided interpretation of practical vs unrealistic hedge variants
 
-Main capabilities:
+Result structure:
 
-- bond cashflow schedule generation
-- PV of coupons and principal
-- floating-leg valuation
-- fair swap-spread search
-- hedge-ratio comparison
-- rate-scenario sensitivity
+1. hedge options
+2. scenario impact
+3. cashflow schedule
+4. warnings
 
-Flow:
+## 8.10 Stress Scenarios
 
-1. Enter issue dates, notional, coupon, and coupon frequency
-2. Enter the market curve points
-3. Enter one-year rate scenarios
-4. Choose hedge ratios
-5. Run the bond / swap package
-6. Review bond PV, fair spread, hedge constructions, and scenario sensitivity
+Purpose:
 
-## 11.10 Stress Scenarios
+- test resilience under deterministic adverse scenarios
 
 Basic flow:
 
-1. Choose a predefined scenario
-2. Enter one option position
-3. Run quick stress-check
-4. Review built-in and custom scenario outputs
+1. choose a preset
+2. define one option position
+3. run stress
+4. review interpretation and scenario table
 
 Pro flow:
 
-1. Add one or more option positions through the structured position builder
-2. Choose a scenario template or edit shocks manually
-3. Run full stress test
-4. Review scenario table and raw details
+1. add one or more positions
+2. define `underlying_id`
+3. apply a preset or custom shocks
+4. run full stress
+5. review scenario table and ranking chart
 
-Main capabilities:
+Capabilities:
 
-- preset stress templates
-- single-position quick stress
-- multi-position pro stress builder
+- preset scenarios
 - custom underlying shocks
-- volatility and rate shifts
-- scenario PnL comparison
+- volatility shift
+- rate shift
+- multi-position stress
+- scenario ranking chart
 
-## 11.11 Bridges Between Functional Blocks
+---
 
-The project supports cross-tab workflows so that users do not need to re-enter the same information manually.
+## 9. Bridges and Cross-Workflow Transfers
 
-Current bridges:
+One of the strongest UX additions in this project is the bridge system.
 
-- selected asset context -> `Options`
-- selected asset context -> `Futures & SPFI`
-- selected asset context -> `Option Risk`
-- selected asset context -> `Model Check`
-- selected asset context -> `Stress Scenarios`
-- `Options` -> `Option Risk`
-- `Hedge Constructor` single-asset linear hedge -> `Futures & SPFI`
-- `Hedge Constructor` protective put -> `Options`
-- `Hedge Constructor` portfolio rebalance -> `Portfolio`
+The user does not always need to retype the same contract or market state in multiple tabs.
 
-This bridge system is one of the key UX improvements in the current version.
+### 9.1 Shared Asset Context
 
-## 11.12 Tinkoff Cache Workflow
+The selected asset context can feed:
 
-The Tinkoff search flow now uses a shared file-cache instead of relying on live API search for every request.
+- `Options`
+- `Futures & SPFI`
+- `Option Risk`
+- `Model Check`
+- `Stress Scenarios`
 
-Standard behavior:
+Transferred fields depend on the target, but can include:
 
-1. The user searches by ticker or name
-2. The service searches the shared cache file first
-3. Exact matches are ranked first
-4. Similar results are also returned below the exact match
+- last price
+- price history
+- daily `mu`
+- daily `sigma`
+- position size
+- multiplier
+- PnL series
 
-Fallback behavior:
+### 9.2 Options -> Option Risk
 
-1. If the cache result is not enough, the user can press the small live-search button
-2. The service performs a live Tinkoff API search
-3. The result can be merged back into the shared cache
+The `Send To Option Risk` action copies:
 
-Refresh behavior:
+- option type
+- spot
+- strike
+- maturity
+- rate
+- volatility
+- dividend yield
+- quantity
+- multiplier
 
-- the cache can be rebuilt manually through `/api/tinkoff_cache/rebuild`
-- the service can refresh the cache automatically when it is stale
-- the cache is shared by the entire service, not by individual users
+### 9.3 Hedge Constructor Bridges
 
-## 11.13 Reporting Workflow
+Single-asset hedge scenarios can open:
 
-The reporting workflow is intentionally separated from the calculation step.
+- `Futures & SPFI`
+- `Options`
 
-Flow:
+Portfolio hedge scenarios can update:
 
-1. Run a calculation first
-2. Review the on-screen result
-3. Click `Create PDF Report`
-4. Wait for the backend generation step
-5. Click `Download PDF`
+- `Portfolio` weights directly
 
-Current report types:
+These bridges are action-oriented, not just informational.
+
+---
+
+## 10. Explainability, Copilot, and Hedge Logic
+
+## 10.1 Explainability Layer
+
+Files:
+
+- `services/explainability.py`
+
+Purpose:
+
+- convert the raw result into a concise structured summary
+
+Output structure:
+
+- `severity`
+- `label`
+- `headline`
+- `summary`
+- `takeaways`
+- `next_steps`
+
+This layer does not invent new math. It interprets existing metrics.
+
+## 10.2 Risk Copilot
+
+Files:
+
+- `services/risk_copilot.py`
+
+Purpose:
+
+- highlight what matters most in the result
+
+Output structure:
+
+- `title`
+- `severity`
+- `one_liner`
+- `main_message`
+- `signals`
+- `actions`
+
+The copilot is rule-based, not LLM-generated.
+
+It uses:
+
+- current risk share
+- ES / VaR relationship
+- liquidity add-on
+- concentration
+- correlation
+- risk / return balance
+
+## 10.3 Hedge Constructor
+
+Files:
+
+- `services/hedge_constructor.py`
+
+Purpose:
+
+- offer a curated set of practical scenarios
+- compare before / after
+- support immediate next-step workflows
+
+The hedge suggestions are deterministic and scenario-based.
+
+They are not an optimizer and do not claim to be globally optimal.
+
+---
+
+## 11. Exact Hedge Scenarios and Conditions
+
+## 11.1 Single-Asset Hedge Scenarios
+
+The single-asset hedge constructor currently builds four quick scenarios.
+
+### Scenario 1: Trim the position by 25%
+
+Fields:
+
+- `id = trim_25`
+- `type = size_reduction`
+- `factor = 0.75`
+
+Meaning:
+
+- keep 75% of the position
+- scale risk approximately linearly
+
+Action text:
+
+- reduce roughly one quarter of the current position
+
+### Scenario 2: Trim the position by 50%
+
+Fields:
+
+- `id = trim_50`
+- `type = size_reduction`
+- `factor = 0.50`
+
+Meaning:
+
+- keep 50% of the position
+- scale risk approximately linearly
+
+Action text:
+
+- cut the current exposure in half
+
+### Scenario 3: Add a 50% linear hedge
+
+Fields:
+
+- `id = futures_50`
+- `type = linear_hedge`
+- `factor = 0.50`
+
+Meaning:
+
+- approximate a short futures / SPFI hedge on 50% of spot exposure
+- residual risk is scaled to 50% of the original first-order risk
+
+Quick action:
+
+- open in `Futures & SPFI`
+
+Generated hedge payload:
+
+- `instrument_type = futures`
+- `spot = last_price`
+- `entry_price = last_price`
+- `maturity_years = 0.25`
+- `rate = 0.05`
+- `income_yield = 0.0`
+- `quantity = position_size * 0.50`
+- `multiplier = 1.0`
+- `scenario_spot = last_price * 0.95`
+- `hedge_ratio = 0.50`
+
+### Scenario 4: Add a 75% linear hedge
+
+Fields:
+
+- `id = futures_75`
+- `type = linear_hedge`
+- `factor = 0.25`
+
+Meaning:
+
+- approximate a short futures / SPFI hedge on 75% of spot exposure
+- residual risk is scaled to 25% of the original first-order risk
+
+Quick action:
+
+- open in `Futures & SPFI`
+
+Generated hedge payload:
+
+- `hedge_ratio = 0.75`
+- `quantity = position_size * 0.75`
+- other fields follow the same pattern as the 50% hedge
+
+### Protective Put Bridge
+
+This is not one of the four core scenario cards, but it is always available as a bridge action.
+
+Payload:
+
+- `option_type = put`
+- `spot = last_price`
+- `strike = 90% of spot`
+- `maturity_years = 0.25`
+- `rate = 0.05`
+- `volatility = 0.25`
+- `dividend_yield = 0.0`
+- `quantity = position_size`
+- `multiplier = 1.0`
+
+Purpose:
+
+- move the user from a directional position into a nonlinear downside-protection workflow
+
+## 11.2 Portfolio Hedge Scenarios
+
+The portfolio hedge constructor currently builds three quick scenarios.
+
+### Scenario 1: Move closer to equal weights
+
+Fields:
+
+- `id = equal_weight`
+- weights become `1 / number_of_assets` for each asset
+
+Meaning:
+
+- create a diversification baseline
+
+Quick action:
+
+- apply these weights directly into the portfolio table
+
+### Scenario 2: Cut the largest position by 15 percentage points
+
+Fields:
+
+- `id = trim_largest_15pp`
+- remove `0.15` from the largest weight
+- redistribute the removed weight across the remaining assets
+
+Meaning:
+
+- show a more realistic partial rebalance
+
+Quick action:
+
+- apply these weights directly into the portfolio table
+
+### Scenario 3: Add a 20% protective overlay
+
+Fields:
+
+- `id = market_overlay_20`
+- `scale_factor = 0.80`
+
+Meaning:
+
+- approximate a short overlay that reduces net market exposure to 80%
+- the model keeps annual return unchanged in this quick scenario
+- VaR and annual volatility are scaled down by the overlay factor
+
+This is a decision-support approximation, not a full overlay pricing engine.
+
+## 11.3 Severity Logic for Hedge Cards
+
+The hedge constructor uses the same risk-share severity buckets:
+
+- `green` if loss share `< 2%`
+- `yellow` if loss share `< 5%`
+- `red` otherwise
+
+This applies to the `after` state of the scenario.
+
+---
+
+## 12. Reporting System
+
+Files:
+
+- `services/reporting.py`
+- report endpoints in `main.py`
+
+The reporting system is backend-generated and report-oriented.
+
+### 12.1 Report Flow
+
+1. user runs a calculation
+2. frontend stores the last valid result
+3. user clicks `Create PDF Report`
+4. frontend sends:
+   - calculation payload
+   - result payload
+   - chart images
+5. backend generates PDF bytes
+6. report is stored temporarily in memory
+7. user clicks `Download PDF`
+
+### 12.2 Report Types
 
 - `One Asset`
 - `Portfolio`
+- `Option Risk`
 
-Report content can include:
+### 12.3 Report Storage
+
+The report store is in-memory.
+
+Properties:
+
+- temporary
+- max report count limit
+- TTL-based cleanup
+
+This is good for local or demo usage, but not intended as permanent archival storage.
+
+### 12.4 Report Content by Type
+
+#### One Asset Report
+
+Includes:
 
 - input snapshot
-- summary metrics
-- interpretation blocks
-- risk signals
-- chart images
+- current position value
+- parametric VaR
+- historical VaR
+- ES
+- stressed LVaR
+- interpretation summary
+- executive bullets
+- price history chart
+- methodology note
 
-## 12. Local Run Instructions
+#### Portfolio Report
 
-## 12.1 Docker
+Includes:
 
-Recommended command:
+- input snapshot
+- normalization base
+- portfolio VaR on base `1.0`
+- annual return / volatility
+- portfolio composition
+- interpretation summary
+- executive bullets
+- efficient frontier
+- cumulative return chart
+- correlation matrix
+- allocation chart
+- methodology note
+
+#### Option Risk Report
+
+Includes:
+
+- input snapshot
+- simulations, horizon, seed mode
+- Delta-Normal VaR
+- Delta-Gamma VaR
+- Monte Carlo VaR / ES
+- Full Revaluation VaR / ES
+- interpretation summary
+- Monte Carlo histogram
+- methodology note
+
+---
+
+## 13. Recommendation Logic: Fixed or Dynamic?
+
+The platform does not use a language model to invent recommendations.
+
+The recommendation logic is rule-based and deterministic.
+
+### 13.1 What the Recommendation Layers Depend On
+
+For single asset:
+
+- parametric VaR
+- historical VaR
+- ES
+- stressed LVaR
+- loss share vs position size
+
+For portfolio:
+
+- portfolio VaR
+- annual return
+- annual volatility
+- largest weight
+- average absolute correlation
+
+### 13.2 What Is Fixed
+
+- the set of scenario templates
+- the threshold logic
+- the wording families
+
+### 13.3 What Is Dynamic
+
+- severity
+- highlighted message
+- signal values
+- which actions appear
+- which hedge card looks best after scaling
+
+In short:
+
+- not hardcoded one-text-for-all
+- not LLM-generated
+- rule-based on top of calculated metrics
+
+---
+
+## 14. Search Cache Behavior
+
+The Tinkoff cache is intentionally simple and file-based.
+
+### 14.1 Why It Exists
+
+- live Tinkoff search can feel slow
+- common tickers should be available quickly
+- the service needs one shared instrument dictionary for all users
+
+### 14.2 What the Cache Stores
+
+Each record can include:
+
+- `ticker`
+- `figi`
+- `name`
+- `type`
+
+### 14.3 Ranking Logic
+
+Search prioritizes:
+
+1. exact ticker match
+2. ticker prefix
+3. exact name
+4. ticker substring
+5. name substring
+6. fuzzy similarity
+
+Then the result is sorted with a type preference:
+
+- shares
+- bonds
+- ETFs
+- currencies
+
+### 14.4 Anti-Garbage Logic
+
+The cache is not intended to become an infinite dump.
+
+Safeguards:
+
+- deduplication by `FIGI`
+- full rebuild endpoint
+- stale-cache refresh logic
+- shared one-file structure instead of user-specific fragments
+
+---
+
+## 15. Normalization and Scale Conventions
+
+This is an important project-wide consistency rule.
+
+### 15.1 Single Asset
+
+- position-level cash metrics are shown in money terms
+- risk share is shown relative to current position size
+
+### 15.2 Portfolio
+
+- portfolio analytics are normalized to a capital base of `1.0`
+- VaR is therefore interpreted as a share of capital
+- annual return and annual volatility are percentages
+- cumulative chart starts from `1.00`
+
+This convention was chosen to remove ambiguity between “growth from 1” and “growth from 100000”.
+
+### 15.3 Option Risk
+
+- approximation and simulation outputs are shown in PnL units derived from the cash Greeks and the selected contract scale
+
+---
+
+## 16. Final Manual QA Checklist
+
+Recommended final QA order:
+
+1. `One Asset`
+2. `Portfolio`
+3. `MOEX`
+4. `Options`
+5. `Option Risk`
+6. `Futures & SPFI`
+7. `Stress Scenarios`
+8. `Model Check`
+9. `Factor Breakdown`
+10. `Bond & Swap`
+11. PDF generation
+12. Tinkoff cache search
+13. bridges between tabs
+
+### 16.1 Key things to confirm
+
+- no broken buttons
+- no `undefined`
+- no `NaN`
+- no Russian UI text
+- no stale selected asset after reload
+- correct percent vs cash formatting
+- charts render cleanly
+- report generation works
+- cache search returns both exact and similar results
+
+---
+
+## 17. Local Run Instructions
+
+### 17.1 Docker
+
+Recommended:
 
 ```bash
 docker compose up --build
@@ -1218,50 +1167,62 @@ Open:
 http://127.0.0.1:8000
 ```
 
-## 12.2 Local Python
+### 17.2 Local Python
 
-If dependencies are installed:
+If dependencies are already installed:
 
 ```bash
 python main.py
 ```
 
-## 12.3 Environment
+### 17.3 Environment
 
 Optional:
 
 - `TINKOFF_TOKEN`
+- `TINKOFF_CACHE_REFRESH_HOUR_UTC`
+- `TINKOFF_CACHE_MAX_AGE_HOURS`
 
 Without `TINKOFF_TOKEN`:
 
-- Tinkoff-based search and candles are limited
-- manual mode, random mode, MOEX, and local derivative analytics still work
+- Tinkoff live search is unavailable
+- manual, random, MOEX, and local analytical flows still work
 
-## 13. Deploy Notes
+---
 
-- Docker installs the T-Bank SDK from the official package registry
-- clean Docker build is expected to succeed from scratch
-- the running container exposes port `8000`
+## 18. Current Boundaries
 
-## 14. Current Limits
+The final release is strong, but not pretending to be a full institutional platform.
 
-- the option engine is European-style only
-- Delta-Gamma analytics are still approximations
-- multifactor helpers exist in the service layer, but the current UI focuses on the single-factor path
-- some MOEX underlyings may legitimately return empty option boards
+Important limits:
 
-## 15. Summary
+- option pricing is European-style
+- Delta-Gamma methods remain approximations
+- hedge constructor is scenario-based, not optimization-based
+- PDF reports are temporary-download artifacts, not permanent archives
+- the shared Tinkoff cache is file-based, not distributed
 
-The current architecture is:
+These are acceptable boundaries for a local analytical service and course-level product.
 
-- adapters load market data
-- FastAPI endpoints validate requests and assemble responses
-- service modules perform the mathematical work
-- the frontend presents a simplified user flow for non-experts and a fuller workspace for advanced users
+---
 
-This means the platform now supports both:
+## 19. Final Product Positioning
 
-- old risk-calculator workflows
-- new derivative and model-validation workflows
+The final product should be described as:
 
-inside one local Docker-ready application.
+**a risk analytics workspace with decision-support features**
+
+not merely:
+
+**a collection of formulas**
+
+The product now:
+
+- calculates
+- explains
+- compares
+- suggests
+- transfers context between analytical blocks
+- documents the result through PDF reporting
+
+That combination is the main value of the final version.

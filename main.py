@@ -57,7 +57,12 @@ from services.hedge_constructor import (
     build_single_asset_hedge_constructor,
     build_portfolio_hedge_constructor,
 )
-from services.reporting import build_single_asset_report, build_portfolio_report, ReportStore
+from services.reporting import (
+    build_single_asset_report,
+    build_portfolio_report,
+    build_option_risk_report,
+    ReportStore,
+)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -176,7 +181,7 @@ class PortfolioRequest(BaseModel):
     start_date: str
     end_date: str
     confidence: float = 0.95
-    portfolio_value: float = 100000.0
+    portfolio_value: float = 1.0
 
 
 class ReportRequest(BaseModel):
@@ -683,6 +688,25 @@ async def create_portfolio_report(request: ReportRequest):
         return {
             "report_id": report_id,
             "filename": "portfolio-risk-report.pdf",
+            "download_url": f"/api/report/download/{report_id}",
+            "message": "The report has been created and is ready to download.",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/report/option-risk/create")
+async def create_option_risk_report(request: ReportRequest):
+    try:
+        if not request.result or request.result.get("mc_var") is None:
+            raise ValueError("Option Risk calculation data is missing. Run the calculation first.")
+        pdf_bytes = build_option_risk_report(request.calculation, request.result, request.chart_images or {})
+        report_id = report_store.save("option-risk-report.pdf", pdf_bytes)
+        return {
+            "report_id": report_id,
+            "filename": "option-risk-report.pdf",
             "download_url": f"/api/report/download/{report_id}",
             "message": "The report has been created and is ready to download.",
         }
