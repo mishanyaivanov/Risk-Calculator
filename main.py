@@ -772,12 +772,10 @@ async def run_stress_test(request: StressTestRequest):
     try:
         positions_dict = [p.dict() for p in request.positions]
         
-        # Build standard scenarios
         underlying_ids = list(set(p.underlying_id for p in request.positions))
         standard_scenarios = build_standard_stress_scenarios(underlying_ids)
         
         results = []
-        # Run standard scenarios
         for scenario in standard_scenarios:
             result = evaluate_full_revaluation_stress_scenario(
                 positions=positions_dict,
@@ -788,7 +786,6 @@ async def run_stress_test(request: StressTestRequest):
             )
             results.append({"name": scenario['name'], **result})
 
-        # Run custom scenario from request
         custom_result = evaluate_full_revaluation_stress_scenario(
             positions=positions_dict,
             horizon_days=request.horizon_days,
@@ -857,7 +854,6 @@ async def get_option_var(request: OptionVaRRequest):
     try:
         seed_used = request.seed if request.seed is not None else random.SystemRandom().randrange(1, 2**32)
 
-        # 1. Analytical Approximations
         approximations = option_var_moment_approximations(
             delta_cash=request.delta_cash,
             gamma_cash=request.gamma_cash,
@@ -867,7 +863,6 @@ async def get_option_var(request: OptionVaRRequest):
             z_value=request.z_value,
         )
 
-        # 2. Monte Carlo Simulation
         pnl_dg_mc = simulate_delta_gamma_pnl(
             delta_cash=request.delta_cash,
             gamma_cash=request.gamma_cash,

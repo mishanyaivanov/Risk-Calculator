@@ -5,7 +5,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install T-Bank Invest SDK from the official package registry
 RUN pip install --no-cache-dir --index-url https://opensource.tbank.ru/api/v4/projects/238/packages/pypi/simple \
     t-tech-investments \
     --trusted-host opensource.tbank.ru

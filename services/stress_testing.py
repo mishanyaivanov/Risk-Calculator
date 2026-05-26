@@ -60,7 +60,6 @@ def evaluate_full_revaluation_stress_scenario(
                 dividend_yield=dividend,
             )["price"]
         else:
-            # If maturity is reached or passed, use intrinsic value
             stressed_price = option_intrinsic_value(
                 option_type=option_type,
                 spot=spot_scenario,

@@ -54,7 +54,6 @@ def _read_table_from_upload(file_bytes: bytes, filename: str) -> pd.DataFrame:
     if lower_name.endswith(".xlsx") or lower_name.endswith(".xls"):
         return pd.read_excel(buffer)
 
-    # Fallback: try Excel first, then CSV.
     try:
         buffer.seek(0)
         return pd.read_excel(buffer)
@@ -85,7 +84,6 @@ def parse_price_series_file(file_bytes: bytes, filename: str) -> dict[str, Any]:
         if len(columns) == 1:
             price_column = columns[0]
         elif len(columns) >= 2:
-            # Common fallback: first column is date, second is price.
             price_column = columns[1]
             date_column = columns[0]
         else:

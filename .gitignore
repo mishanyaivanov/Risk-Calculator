@@ -205,3 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+.idea/
+*.tex
+*.pdf
+New functions/
+New functions 2/
+_local_backup_before_git_sync/
+PROJECT_TECHNICAL_DOCS.md
+check_imports.py
