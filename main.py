@@ -25,7 +25,6 @@ from riskcalc.stress_testing import (
     evaluate_full_revaluation_stress_scenario,
 )
 
-# One-tailed z-values for left-tail VaR at supported confidence levels.
 Z_BY_CONFIDENCE = {
     0.95: 1.645,
     0.99: 2.326,
@@ -76,7 +75,6 @@ def normalize_confidence(raw: str) -> float:
     if value > 1:
         value = value / 100.0
 
-    # Protect against floating-point representation noise before dictionary lookup.
     value = round(value, 4)
 
     if value not in Z_BY_CONFIDENCE:
@@ -127,12 +125,11 @@ def historical_var_discrete(pnl: list[float], confidence: float) -> tuple[float,
     validate_confidence(confidence)
 
     alpha = 1.0 - confidence
-    sorted_pnl = sorted(pnl)  # Worst losses are first (most negative values).
+    sorted_pnl = sorted(pnl)
     n = len(sorted_pnl)
-    k = max(1, math.ceil(n * alpha))  # ceil(n*alpha)-th worst P&L, no interpolation.
+    k = max(1, math.ceil(n * alpha))
     var_pnl = sorted_pnl[k - 1]
 
-    # Sign convention: P&L losses are negative, while VaR is reported as positive loss magnitude.
     var_loss = max(0.0, -var_pnl)
     return var_loss, var_pnl, k
 
@@ -149,7 +146,6 @@ def expected_shortfall_discrete(pnl: list[float], confidence: float) -> tuple[fl
     tail = sorted_pnl[:tail_count]
     es_pnl = sum(tail) / tail_count
 
-    # ES is also reported as positive loss magnitude.
     es_loss = max(0.0, -es_pnl)
     return es_loss, es_pnl, tail_count
 
@@ -163,7 +159,6 @@ def parametric_var(pnl: list[float], confidence: float) -> tuple[float, float, f
     sigma = stdev(pnl)
     z = z_value_for_confidence(confidence)
 
-    # Left-tail one-tailed normal quantile for P&L.
     q_alpha_pnl = mu - z * sigma
     var_loss = max(0.0, -q_alpha_pnl)
     return var_loss, q_alpha_pnl, mu, sigma
@@ -192,7 +187,6 @@ def linear_unwind_adjustment_factor(days: int) -> float:
 
 
 def linear_unwind_adjusted_var(base_var: float, days: int) -> float:
-    # Excel-note formula for uniform (linear) liquidation over T days.
     factor = linear_unwind_adjustment_factor(days)
     return base_var / factor
 
@@ -296,7 +290,6 @@ def evaluate_option_position(position: dict[str, float | str]) -> dict[str, floa
         "rho": greeks["rho"] * scale,
         "rho_per_1pct": greeks["rho_per_1pct"] * scale,
         "value": greeks["price"] * scale,
-        # Cash Greeks for dS = S * return shock, useful for VaR approximations.
         "delta_cash": greeks["delta"] * spot * scale,
         "gamma_cash": greeks["gamma"] * (spot ** 2) * scale,
         "theta_day": theta_day,

@@ -1,15 +1,9 @@
-"""Bond issue and interest-rate swap spread selection.
-
-The module is intentionally JSON-friendly: public functions accept plain
-dictionaries/lists and return dictionaries with only primitive values.
-"""
-
 from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Sequence, cast
 
 
 DateLike = str | date | datetime
@@ -323,8 +317,6 @@ def solve_swap_spread_bps(
     pay_receive: str = "pay",
     target_net_pv: float = 0.0,
 ) -> dict[str, Any]:
-    """Solve spread so that target_pv + floating_leg_pv = target_net_pv."""
-
     if hedge_ratio <= 0:
         raise ValueError("hedge_ratio must be positive.")
 
@@ -386,14 +378,6 @@ def evaluate_bond_swap_package(
     hedge_ratios: Sequence[float] = (1.0, 0.75, 0.5),
     include_full_issue_variant: bool = True,
 ) -> dict[str, Any]:
-    """Build a bond/swap package with fair spreads and one-year scenarios.
-
-    Sign convention:
-    - bond target PV is positive;
-    - a pay-floating swap leg has negative PV;
-    - calibrated net PV should be close to zero.
-    """
-
     bond = issue if isinstance(issue, BondIssue) else BondIssue.from_mapping(issue)
     bond.validate()
     value_date = parse_date(valuation_date) if valuation_date is not None else bond.issue_date
@@ -659,8 +643,8 @@ def _ensure_curve_points(curve: Sequence[CurveItem] | Sequence[CurvePoint]) -> l
         raise ValueError("curve must contain at least one point.")
     first = curve[0]
     if isinstance(first, CurvePoint):
-        return sorted(curve, key=lambda point: point.tenor_years)  # type: ignore[arg-type]
-    return normalize_curve_points(curve)  # type: ignore[arg-type]
+        return sorted(cast(Sequence[CurvePoint], curve), key=lambda point: point.tenor_years)
+    return normalize_curve_points(cast(Sequence[CurveItem], curve))
 
 
 def _pay_receive_sign(pay_receive: str) -> float:

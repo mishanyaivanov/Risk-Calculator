@@ -77,7 +77,6 @@ def evaluate_full_revaluation_stress_scenario(
 
         position_rows.append(
             {
-                # 1-based index for easier mapping back to user input order.
                 "position_index": idx,
                 "underlying_id": underlying_id,
                 "return_shock": return_shock,

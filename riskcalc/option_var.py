@@ -200,13 +200,11 @@ def option_var_moment_approximations(
     sigma_horizon: float,
     z_value: float,
 ) -> dict[str, float]:
-    # Delta-Normal: PnL ~= delta_cash * r + theta.
     mu_dn = delta_cash * mu_horizon + theta_horizon
     sigma_dn = abs(delta_cash) * sigma_horizon
     q_dn = mu_dn - z_value * sigma_dn
     var_dn = max(0.0, -q_dn)
 
-    # Delta-Gamma with moment-matching normal approximation.
     mu_dg = (
         delta_cash * mu_horizon
         + 0.5 * gamma_cash * (mu_horizon ** 2 + sigma_horizon ** 2)
